@@ -1,0 +1,9 @@
+EXPORTS
+CConfigure
+CNumInputsEx
+CNumOutputsEx
+GetInputName
+GetOutputName
+CSimStart
+CCalculateEx
+CSimStop
