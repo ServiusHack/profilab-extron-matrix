@@ -9,7 +9,7 @@
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
 namespace {
-const char* ApplicationName = "AMX-Crosspoint";
+const char* ApplicationName = "Extron-Matrix";
 
 std::unique_ptr<Simulation> simulation;
 Configuration configuration;

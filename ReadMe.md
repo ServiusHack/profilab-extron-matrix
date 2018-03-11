@@ -1,6 +1,6 @@
-# AMX Crosspoint ProfiLab DLL
+# Extron-Matrix ProfiLab DLL
 
-A DLL for ProfiLab to interact with a crosspoint from AMX.
+A DLL for ProfiLab to interact with a Matrix crosspoint from Extron.
 
 The [documentation](docs/Documentation.md) explains what the DLL does in more detail.
 

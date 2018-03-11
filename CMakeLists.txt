@@ -5,7 +5,7 @@ set(CMAKE_USER_MAKE_RULES_OVERRIDE
 set(CMAKE_USER_MAKE_RULES_OVERRIDE_CXX
    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cxx_flag_overrides.cmake)
 
-project(AMX-Crosspoint)
+project(Extron-Matrix)
 
 add_library(${PROJECT_NAME} SHARED 
 	src/configurationdialog.cpp
@@ -14,7 +14,7 @@ add_library(${PROJECT_NAME} SHARED
 	src/device.cpp
 	src/listserialports.cpp
 	src/simulation.cpp
-	res/AMX-Crosspoint.rc
+	res/Extron-Matrix.rc
 	
 	# ProfiLab expects functions with the stdcall calling convention but the names must be unmangled.
 	# This can only be achieved by changing the function names with a module definition (.def) file.
