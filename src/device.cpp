@@ -8,264 +8,501 @@
 #include <boost/format.hpp>
 #include <boost/function.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/preprocessor/repetition/repeat_from_to.hpp>
+#include <regex>
+#include <sstream>
+
+#include "description.h"
 
 namespace {
-unsigned char ReadyMarker[]{"READY\n"};
+
+namespace ResponsePatterns {
+    const std::regex error("^E([0-9]{2})$");
+    const std::regex tie("^Out([0-9]{2}) In([0-9]{2}) All$");
+    // Documentation lies! U is followed by only one digit
+    const std::regex request_information("^I([0-9]{2})X([0-9]{2}) T([0-9]) U([0-9]{1}) M([0-9]{2})X([0-9]{2}) Vmt([0-9]) Amt([0-9]) Sys([0-9]) Dgn([0-9]{2})$");
+    const std::regex current_configuration("^([0-9]{2} ){16}All$");
+    const std::regex reconfig("^RECONFIG([0-9]{2})$");
 }
 
-Device::Device(uint8_t inputs,
-               uint8_t outputs,
-               boost::asio::io_service& io_service)
-    : number_of_inputs(inputs),
-      number_of_outputs(outputs),
-      port(io_service),
-      buffer(10),
-      request_last_sent_position(0),
-      in_status_response(false),
-      read_banner(true),
-      banner_detection_timer(io_service) {}
-
-void Device::tie(unsigned int input, unsigned int output) {
-  assert(input && input <= number_of_inputs);
-  assert(1 <= output && output <= number_of_outputs);
-
-  std::stringstream str;
-  if (input == 0)
-    str << "DL" << level << "O" << output << "T";
-  else
-    str << "CL" << level << "I" << input << "O" << output << "T";
-  add_to_queue({RequestType::Tie, str.str(), output, input});
+namespace Commands {
+    const Device::Request request_information{Device::RequestType::RequestInformation, "I"};
 }
 
-void Device::audio_mute(unsigned int input, bool mute) {
-  assert(input && input <= number_of_inputs);
-
-  std::stringstream str;
-  str << "CL" << level << "O" << input << "V" << (mute ? 'M' : 'U') << "T";
-  add_to_queue({RequestType::AudioMute, str.str()});
 }
 
-void Device::store(unsigned int index) {
-  assert(1 <= index && index <= 16);
-
-  std::stringstream str;
-  str << "RR" << index << "T";
-  add_to_queue({RequestType::Store, str.str()});
+Device::Device(boost::asio::io_service &io_service)
+    : number_of_presets(32)
+    , number_of_virtual_inputs(0)
+    , number_of_virtual_outputs(0)
+    , lg(boost::log::keywords::channel = "Device")
+    , port(io_service)
+    , buffer(2)
+    , request_in_progress({RequestType::None, ""})
+    , viewed_current_outputs(0)
+{
 }
 
-void Device::recall(unsigned int index) {
-  assert(1 <= index && index <= 16);
-
-  std::stringstream str;
-  str << "R" << index << "T";
-  add_to_queue({RequestType::Recall, str.str()});
+std::pair<std::string, Json::Value> Device::description() const
+{
+    return Description(number_of_virtual_inputs, number_of_virtual_outputs, number_of_presets);
 }
 
-void Device::open(const std::string& port_name) {
-  port.open(port_name);
-
-  port.set_option(boost::asio::serial_port_base::baud_rate(9600));
-  port.set_option(boost::asio::serial_port_base::character_size(8));
-  port.set_option(boost::asio::serial_port_base::stop_bits(
-      boost::asio::serial_port_base::stop_bits::one));
-  port.set_option(boost::asio::serial_port_base::parity(
-      boost::asio::serial_port_base::parity::none));
-  port.set_option(boost::asio::serial_port_base::flow_control(
-      boost::asio::serial_port_base::flow_control::none));
-
-  // Start reading the banner from the serial port.
-  banner_detection_timer.expires_from_now(boost::posix_time::seconds(1));
-  banner_detection_timer.async_wait(boost::bind(
-      boost::mem_fn(&Device::read_banner_timeout), boost::ref(*this), _1));
-  port.async_read_some(boost::asio::buffer(buffer),
-                       boost::bind(boost::mem_fn(&Device::read_banner_handler),
-                                   boost::ref(*this), _1, _2));
+uint8_t Device::get_number_of_virtual_outputs() const
+{
+    return number_of_virtual_outputs;
 }
 
-void Device::close() {
-  port.close();
-}
-
-void Device::initialize() {
-  read_banner = false;
-
-  port.async_read_some(boost::asio::buffer(buffer, 1),
-                       boost::bind(boost::mem_fn(&Device::read_handler),
-                                   boost::ref(*this), _1, _2));
-
-  for (uint8_t output = 1; output <= number_of_outputs; ++output) {
+void Device::tie(unsigned int input, unsigned int output)
+{
     std::stringstream str;
-    str << "SL" << level << "O" << static_cast<unsigned int>(output) << "T";
-    add_to_queue({RequestType::Status, str.str(), output});
-  }
+    str << input << "*" << output << "!";
+    const bool value_change = current_input_of_output[output] != input;
+    add_to_queue({RequestType::Tie, str.str()}, value_change ? QueueType::HighPriority : QueueType::LowPriority);
 }
 
-void Device::add_to_queue(Request command) {
-  std::lock_guard<std::mutex> lock_guard(request_queue_mutex);
-
-  if (request_in_progress.type == RequestType::None) {
-    request_in_progress = command;
-    send_first_byte();
-  } else {
-    request_queue.push_back(std::move(command));
-  }
+void Device::store(unsigned int index)
+{
+    std::stringstream str;
+    str << index << ",";
+    clear_queue(QueueType::HighPriority);
+    clear_queue(QueueType::LowPriority);
+    add_to_queue({RequestType::Store, str.str()}, QueueType::HighPriority);
 }
 
-void Device::read_banner_timeout(const boost::system::error_code& ec) {
-  if (ec) {
-    if (ec.value() == boost::asio::error::operation_aborted) {
-      // Do nothing, the timer was aborted because something was read.
-      return;
-    } else {
-      OutputDebugString(
-          (boost::format("Banner read timeout error (%1% %2%): %3%") %
-           ec.value() % ec.category().name() % ec.message())
-              .str()
-              .c_str());
-      // Continue anways, maybe the error wasn't critical.
-    }
-  }
-
-  port.cancel();
+void Device::recall(unsigned int index)
+{
+    std::stringstream str;
+    str << index << ".";
+    clear_queue(QueueType::HighPriority);
+    clear_queue(QueueType::LowPriority);
+    add_to_queue({RequestType::Recall, str.str()}, QueueType::HighPriority);
 }
 
-void Device::read_banner_handler(const boost::system::error_code& ec,
-                                 std::size_t bytes_transferred) {
-  banner_detection_timer.cancel();
+void Device::set_input_name(uint8_t index, const std::string& name)
+{
+    std::stringstream str;
+    str << "\x1BnI" << static_cast<unsigned int>(index) << "," << name << "\r";
+    const bool value_change = input_names[index] != name;
+    add_to_queue({RequestType::WriteVirtualInputName, str.str(), index}, value_change ? QueueType::HighPriority : QueueType::LowPriority);
+}
 
-  if (ec) {
-    if (ec.value() == boost::asio::error::operation_aborted) {
-      // Time has passed to wait for the banner. Start initializing.
-      initialize();
-    } else {
-      OutputDebugString(
-          (boost::format("Device communication error (%1% %2%): %3%") %
-           ec.value() % ec.category().name() % ec.message())
-              .str()
-              .c_str());
-      reportError("fatal read error");
-    }
-    return;
-  }
+void Device::set_output_name(uint8_t index, const std::string& name)
+{
+    std::stringstream str;
+    str << "\x1BnO" << static_cast<unsigned int>(index) << "," << name << "\r";
+    const bool value_change = output_names[index] != name;
+    add_to_queue({RequestType::WriteVirtualOutputName, str.str(), index}, value_change ? QueueType::HighPriority : QueueType::LowPriority);
+}
 
-  banner.insert(banner.end(), buffer.begin(),
-                buffer.begin() + bytes_transferred);
+void Device::request_begin_current_configuration_requests()
+{
+    // Queue type must be the same as for the following request_* methods because this one must immediately preceed them.
+    add_to_queue({RequestType::BeginRequestCurrentConfiguration, ""}, QueueType::LowPriority);
+}
 
-  port.async_read_some(boost::asio::buffer(buffer),
-                       boost::bind(boost::mem_fn(&Device::read_banner_handler),
-                                   boost::ref(*this), _1, _2));
+void Device::request_current_configuration(unsigned int start_output)
+{
+    std::stringstream str;
+    str << "0*" << start_output << "*00VA";
+    add_to_queue({RequestType::RequestCurrentConfiguration, str.str()}, QueueType::LowPriority);
+}
 
-  if (std::find_end(banner.begin(), banner.end(), std::begin(ReadyMarker),
-                    std::end(ReadyMarker)) != banner.end()) {
-    OutputDebugString((std::string("Received banner:\n") + banner).c_str());
+void Device::request_virtual_output_name(uint8_t output)
+{
+    std::stringstream str;
+    str << "\x1BNO" << static_cast<unsigned int>(output) << "\r";
+    add_to_queue({RequestType::ReadVirtualOutputName, str.str(), output}, QueueType::LowPriority);
+}
+
+void Device::request_virtual_input_name(uint8_t input)
+{
+    std::stringstream str;
+    str << "\x1BNI" << static_cast<unsigned int>(input) << "\r";
+    add_to_queue({RequestType::ReadVirtualInputName, str.str(), input}, QueueType::LowPriority);
+}
+
+void Device::open(const std::string& port_name)
+{
+    port.open(port_name);
+
+    port.set_option(boost::asio::serial_port_base::baud_rate(9600));
+    port.set_option(boost::asio::serial_port_base::character_size(8));
+    port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
+    port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
+    port.set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::none));
+
     initialize();
-  }
 }
 
-void Device::read_handler(const boost::system::error_code& ec,
-                          std::size_t bytes_transferred) {
-  if (ec) {
-    OutputDebugString(
-        (std::string("Device communication error: ") + ec.message()).c_str());
-    reportError("fatal read error");
-    return;
-  }
-
-  if (bytes_transferred == 0)
-    return;  // This seems to be the case when the port is closed, so we return
-             // early.
-
-  assert(bytes_transferred == 1);
-
-  unsigned char first_byte = this->buffer[0];
-
-  if (in_status_response) {
-    if (first_byte == ')') {
-      // end of status response
-      in_status_response = false;
-
-      // process accumulator
-      std::stringstream sstr(accumulator);
-
-      while (true) {
-        unsigned int input;
-        sstr >> input;
-
-        if (sstr.eof())
-          break;
-
-        tieChanged(request_in_progress.output, static_cast<uint8_t>(input));
-      }
-
-      if (request_in_progress.output == number_of_outputs) {
-        std::call_once(connectedCallbackOnceFlag, connectedCallback);
-      }
-
-      send_next_message();
-    } else {
-      accumulator.push_back(first_byte);
-    }
-  } else {
-    if (first_byte == 'X' || first_byte == '?') {
-      OutputDebugString(
-          (boost::format(
-               "Device communication error %1%%2% (complete request: %3%)") %
-           request_in_progress.request.substr(0, request_last_sent_position) %
-           first_byte % request_in_progress.request)
-              .str()
-              .c_str());
-      send_next_message();
-    } else if (first_byte == '(') {
-      in_status_response = true;
-      accumulator.clear();
-    } else if (first_byte == 'T') {
-      if (request_in_progress.type == RequestType::Tie)
-        tieChanged(request_in_progress.output, request_in_progress.input);
-      if (request_in_progress.type != RequestType::Status)
-        send_next_message();
-      // status response will follow with a '('.
-    } else if (request_last_sent_position <
-                   request_in_progress.request.length() &&
-               first_byte ==
-                   request_in_progress.request[request_last_sent_position]) {
-      if (request_last_sent_position <
-          request_in_progress.request.length() - 1) {
-        port.write_some(boost::asio::buffer(
-            &request_in_progress.request[++request_last_sent_position], 1));
-      }
-    } else {
-      OutputDebugString((boost::format("Unrecognized response %1% after %2% "
-                                       "characters of request %3%)") %
-                         first_byte % (request_last_sent_position + 1) %
-                         request_in_progress.request)
-                            .str()
-                            .c_str());
-      reportError("unrecognized response");
-    }
-  }
-
-  // Schedule the next read.
-  if (port.is_open())
-    port.async_read_some(boost::asio::buffer(buffer, 1),
-                         boost::bind(boost::mem_fn(&Device::read_handler),
-                                     boost::ref(*this), _1, _2));
+void Device::close()
+{
+    port.close();
 }
 
-void Device::send_next_message() {
-  std::lock_guard<std::mutex> lock_guard(request_queue_mutex);
+void Device::initialize()
+{
+    // Start reading from the serial port.
+    port.async_read_some(boost::asio::buffer(buffer), boost::bind(boost::mem_fn(&Device::read_handler), boost::ref(*this), _1, _2));
 
-  if (request_queue.size() > 0) {
-    request_in_progress = request_queue.front();
-    request_queue.pop_front();
-    send_first_byte();
-  } else {
+    add_to_queue(Commands::request_information, QueueType::LowPriority);
+}
+
+void Device::add_to_queue(Request command, QueueType queueType)
+{
+    std::lock_guard<std::mutex> lock_guard(request_queue_mutex);
+
+    if (request_in_progress.type == RequestType::None)
+    {
+        request_in_progress = command;
+        BOOST_LOG_SEV(lg, Logging::debug) << "Sending immediately: " << command.request;
+        port.write_some(boost::asio::buffer(command.request));
+    }
+    else if (queueType == QueueType::HighPriority)
+    {
+        high_priority_request_queue.push_back(std::move(command));
+    }
+    else if (queueType == QueueType::LowPriority)
+    {
+        low_priority_request_queue.push_back(std::move(command));
+    }
+}
+
+void Device::clear_queue(QueueType queueType)
+{
+    std::lock_guard<std::mutex> lock_guard(request_queue_mutex);
+
+    switch (queueType)
+    {
+    case QueueType::HighPriority:
+        high_priority_request_queue.clear();
+        break;
+    case QueueType::LowPriority:
+        low_priority_request_queue.clear();
+        break;
+    }
+}
+
+void Device::process_response(const std::string& response)
+{
+    BOOST_LOG_SEV(lg, Logging::debug) << boost::format("Received (%2%): %1%") % response % response.size();
+
+    {
+        std::smatch m;
+        std::regex_match(response, m, ResponsePatterns::error);
+        if (!m.empty())
+        {
+            BOOST_LOG_SEV(lg, Logging::warning) << boost::format("Received %1% in response to %2%. Resending...") % response % request_in_progress.request;
+            port.write_some(boost::asio::buffer(request_in_progress.request));
+            return;
+        }
+    }
+
+    {
+      std::smatch m;
+      std::regex_match(response, m, ResponsePatterns::reconfig);
+      if (!m.empty())
+      {
+            BOOST_LOG_SEV(lg, Logging::debug) << boost::format("Received %1%, requesting new data if necessary.") % response;
+            unsigned int reconfig_id = boost::lexical_cast<unsigned int>(m.str(1));
+            switch (reconfig_id) {
+              case 14:
+                // Connections changed
+                add_to_queue(Commands::request_information, QueueType::LowPriority);
+                break;
+              case 17:
+                // Name change for virtual input #1-16
+                for (uint8_t input = 1; input <= 16; ++input)
+                {
+                    request_virtual_input_name(input);
+                }
+                break;
+              case 18:
+                // Name change for virtual input #17-32
+                for (uint8_t input = 17; input <= 32; ++input)
+                {
+                    request_virtual_input_name(input);
+                }
+                break;
+              case 19:
+                // Name change for virtual input #33-48
+                for (uint8_t input = 33; input <= 48; ++input)
+                {
+                    request_virtual_input_name(input);
+                }
+                break;
+              case 20:
+                // Name change for virtual input #49-64
+                for (uint8_t input = 49; input <= 64; ++input)
+                {
+                    request_virtual_input_name(input);
+                }
+                break;
+              case 21:
+                // Name change for virtual output #1-16
+                for (uint8_t output = 1; output <= 16; ++output)
+                {
+                    request_virtual_output_name(output);
+                }
+                break;
+              case 22:
+                // Name change for virtual output #17-32
+                for (uint8_t output = 17; output <= 32; ++output)
+                {
+                    request_virtual_output_name(output);
+                }
+                break;
+              case 23:
+                // Name change for virtual output #33-48
+                for (uint8_t output = 33; output <= 48; ++output)
+                {
+                    request_virtual_output_name(output);
+                }
+                break;
+              case 24:
+                // Name change for virtual output #49-64
+                for (uint8_t output = 49; output <= 64; ++output)
+                {
+                    request_virtual_output_name(output);
+                }
+                break;
+            }
+            return;
+      }
+    }
+
+    switch (request_in_progress.type)
+    {
+    case RequestType::RequestInformation:
+    {
+        std::smatch m;
+        std::regex_match(response, m, ResponsePatterns::request_information);
+
+        if (m.empty())
+        {
+            BOOST_LOG_SEV(lg, Logging::error) << "Unable to interpret the 'request information' response.";
+        }
+        else
+        {
+            unsigned int in_size = boost::lexical_cast<unsigned int>(m.str(1));
+            unsigned int out_size = boost::lexical_cast<unsigned int>(m.str(2));
+            unsigned int technology = boost::lexical_cast<unsigned int>(m.str(3));
+            unsigned int number_of_units = boost::lexical_cast<unsigned int>(m.str(4));
+            unsigned int in_map_size = boost::lexical_cast<unsigned int>(m.str(5));
+            unsigned int out_map_size = boost::lexical_cast<unsigned int>(m.str(6));
+            bool video_muted = boost::lexical_cast<unsigned int>(m.str(7)) == 1;
+            bool audio_muted = boost::lexical_cast<unsigned int>(m.str(8)) == 1;
+            unsigned int sys_power_supply_status = boost::lexical_cast<unsigned int>(m.str(9));
+            unsigned int diagnostics = boost::lexical_cast<unsigned int>(m.str(10));
+
+            boost::log::record rec = lg.open_record(boost::log::keywords::severity = Logging::info);
+            if (rec)
+            {
+                boost::log::record_ostream strm(rec);
+                strm << "Received device information:";
+                strm << std::endl << "  " << in_size << " physical inputs";
+                strm << std::endl << "  " << out_size << " physical outputs";
+                switch (technology)
+                {
+                    case 0:
+                        strm << std::endl << "  BME not present";
+                        break;
+                    case 1:
+                        strm << std::endl << "  wideband";
+                        break;
+                    case 2:
+                        strm << std::endl << "  Lo-Res";
+                        break;
+                    case 3:
+                        strm << std::endl << "  Sync";
+                        break;
+                    case 4:
+                        strm << std::endl << "  Audio";
+                        break;
+                }
+                strm << std::endl << "  " << number_of_units << " unit(s)";
+                strm << std::endl << "  " << in_map_size << " virtual inputs";
+                strm << std::endl << "  " << out_map_size << " virtual outputs";
+                strm << std::endl << "  " << (video_muted ? "video muted" : "video not muted");
+                strm << std::endl << "  " << (audio_muted ? "audio muted" : "audio not muted");
+                switch (sys_power_supply_status)
+                {
+                    case 0:
+                        strm << std::endl << "  off or dead power supply";
+                        break;
+                    case 1:
+                        strm << std::endl << "  no redundant power supply, using main";
+                        break;
+                    case 2:
+                        strm << std::endl << "  using redundant power supply";
+                        break;
+                    case 3:
+                        strm << std::endl << "  has redundant power supply, using main";
+                        break;
+                }
+                strm << std::endl << "  " << "Diagnostics code: " << diagnostics;
+
+                strm.flush();
+                lg.push_record(boost::move(rec));
+            }
+
+            number_of_virtual_inputs = in_map_size;
+            number_of_virtual_outputs = out_map_size;
+            current_input_of_output.resize(number_of_virtual_outputs, 0);
+            input_names.resize(number_of_virtual_inputs, "");
+            output_names.resize(number_of_virtual_outputs, "");
+            std::call_once(setupCallbackOnceFlag, setupCallback);
+
+            request_begin_current_configuration_requests();
+            for (unsigned int start_output = 1; start_output <= number_of_virtual_outputs; start_output += 16)
+            {
+                request_current_configuration(start_output);
+            }
+
+            for (uint8_t output = 1; output <= number_of_virtual_outputs; ++output)
+            {
+                request_virtual_output_name(output);
+            }
+
+            for (uint8_t input = 1; input <= number_of_virtual_outputs; ++input)
+            {
+
+                request_virtual_input_name(input);
+            }
+        }
+
+        break;
+    }
+    case RequestType::Tie:
+    {
+        std::smatch m;
+        std::regex_match(response, m, ResponsePatterns::tie);
+
+        if (m.empty())
+        {
+            BOOST_LOG_SEV(lg, Logging::error) << "Unable to interpret the 'tie' response.";
+        }
+        else
+        {
+            unsigned int out = boost::lexical_cast<unsigned int>(m.str(1));
+            unsigned int in = boost::lexical_cast<unsigned int>(m.str(2));
+            BOOST_LOG_SEV(lg, Logging::debug) << boost::format("Read input %1% tied to output %2%") % in % out;
+            current_input_of_output[out] = in;
+            tieChanged(out, in);
+        }
+
+        break;
+    }
+    case RequestType::RequestCurrentConfiguration:
+    {
+        std::smatch m;
+        std::regex_match(response, m, ResponsePatterns::current_configuration);
+        if(m.empty())
+        {
+            BOOST_LOG_SEV(lg, Logging::error) << "Unable to interpret the 'global preset ties' response.";
+        }
+        else
+        {
+            std::stringstream response_stream(response);
+            for (unsigned int out = 1; out <= 16; ++out) {
+                unsigned int in;
+                response_stream >> in;
+
+                BOOST_LOG_SEV(lg, Logging::debug) << boost::format("Read video input %1% tied to %2%") % in % static_cast<unsigned int>(viewed_current_outputs);
+                tieChanged(++viewed_current_outputs, static_cast<uint8_t>(in));
+
+                if (viewed_current_outputs >= number_of_virtual_outputs)
+                {
+                    std::call_once(connectedCallbackOnceFlag, connectedCallback);
+                    break;
+                }
+            }
+        }
+
+        break;
+    }
+    case RequestType::ReadVirtualInputName:
+    {
+        input_names[request_in_progress.index - 1] = response;
+        inputNameChanged(request_in_progress.index, response);
+        break;
+    }
+    case RequestType::ReadVirtualOutputName:
+    {
+        output_names[request_in_progress.index - 1] = response;
+        outputNameChanged(request_in_progress.index, response);
+        break;
+    }
+    default:
+    {
+        // Why did we get a response but did not expect one?
+        BOOST_LOG_SEV(lg, Logging::error) << boost::format("Unexpected response '%1%' with request type %2%") % response % request_in_progress.request;
+        break;
+    }
+    }
+
+    std::lock_guard<std::mutex> lock_guard(request_queue_mutex);
+
+    auto queues = {&high_priority_request_queue, &low_priority_request_queue};
+
+    for (auto& queue : queues)
+    {
+        if (queue->size() == 0)
+            continue;
+
+        request_in_progress = queue->front();
+        queue->pop_front();
+
+        if (request_in_progress.type == RequestType::BeginRequestCurrentConfiguration)
+        {
+            // Reset counter for which outputs we already processed RequestCurrentConfiguration.
+            viewed_current_outputs = 0;
+
+            // Read the next request, if one is already in the queue.
+            if (queue->size() > 0)
+            {
+                request_in_progress = queue->front();
+                queue->pop_front();
+            }
+            else
+            {
+                request_in_progress = {RequestType::None, ""};
+                continue;
+            }
+        }
+
+        BOOST_LOG_SEV(lg, Logging::debug) << "Sending next: " << request_in_progress.request;
+        port.write_some(boost::asio::buffer(request_in_progress.request));
+        return;
+    }
+
+    // No queue contained any request.
     request_in_progress = {RequestType::None, ""};
-  }
 }
 
-void Device::send_first_byte() {
-  request_last_sent_position = 0;
-  port.write_some(boost::asio::buffer(
-      &request_in_progress.request[request_last_sent_position], 1));
+void Device::read_handler(const boost::system::error_code& ec, std::size_t bytes_transferred) {
+    if (ec) {
+        BOOST_LOG_SEV(lg, Logging::error) << "Device communication error: " << ec.message();
+        should_exit();
+        return;
+    }
+
+    BOOST_LOG_SEV(lg, Logging::debug) << boost::format("Read %1% bytes.") % bytes_transferred;
+
+    if (bytes_transferred == 0)
+        return; // This seems to be the case when the port is closed, so we return early.
+
+    auto line_end = std::find(buffer.begin(), buffer.begin() + bytes_transferred, '\n');
+
+    if (line_end != buffer.begin() + bytes_transferred) {
+        old_buffer.insert(old_buffer.end(), buffer.begin(), line_end);
+        process_response(std::string(old_buffer.begin(), old_buffer.end()-1)); // omit \r from old_buffer
+        old_buffer = std::vector<unsigned char>(std::next(line_end), buffer.begin() + bytes_transferred);
+    }
+    else {
+        old_buffer.insert(old_buffer.end(), buffer.begin(), buffer.begin() + bytes_transferred);
+    }
+
+    // Schedule the next read.
+    if (port.is_open())
+        port.async_read_some(boost::asio::buffer(buffer), boost::bind(boost::mem_fn(&Device::read_handler), boost::ref(*this), _1, _2));
 }
