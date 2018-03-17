@@ -10,6 +10,8 @@ struct Configuration {
   std::string comPort;
   unsigned int inputs{12};
   unsigned int outputs{12};
+  bool includeInputNames{false};
+  bool includeOutputNames{false};
 
   Configuration() = default;
   explicit Configuration(double* PUser);

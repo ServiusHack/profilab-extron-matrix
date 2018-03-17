@@ -1,11 +1,13 @@
 add_executable(${PROJECT_NAME}_DLLTests
  ${CMAKE_SOURCE_DIR}/src/dll.cpp # SUT
  ${CMAKE_SOURCE_DIR}/src/simulation.cpp
+ ${CMAKE_SOURCE_DIR}/src/simulation.cpp
  dll_test.cpp # Tests
  ${CMAKE_SOURCE_DIR}/tests/mocks/configuration_mock.cpp
  ${CMAKE_SOURCE_DIR}/tests/mocks/configurationdialog_mock.cpp
  ${CMAKE_SOURCE_DIR}/tests/mocks/device_mock.cpp
 )
+add_test(DLL ${PROJECT_NAME}_Test_DLL)
 add_test(DLL ${PROJECT_NAME}_DLLTests)
 
 target_include_directories(${PROJECT_NAME}_DLLTests PRIVATE ${CMAKE_SOURCE_DIR}/src)

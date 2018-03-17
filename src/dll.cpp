@@ -1,8 +1,10 @@
 #include <assert.h>
+#include <thread>
+#include <mutex>
 
 #include "configurationdialog.h"
 
-#include <boost/asio/io_service.hpp>
+#include <boost/format.hpp>
 
 #include "simulation.h"
 
@@ -41,6 +43,10 @@ DLLEXPORT unsigned char __stdcall CNumInputsEx(double* PUser) {
   configuration = Configuration(PUser);
   if (configuration.present) {
     unsigned int numberOfInputs = configuration.outputs + 2;
+    if (configuration.includeInputNames)
+      numberOfInputs += configuration.inputs;
+    if (configuration.includeOutputNames)
+      numberOfInputs += configuration.outputs;
     assert(numberOfInputs <= std::numeric_limits<unsigned char>::max());
     return static_cast<unsigned char>(numberOfInputs);
   } else {
@@ -59,6 +65,10 @@ DLLEXPORT unsigned char __stdcall CNumOutputsEx(double* PUser) {
 
   if (configuration.present) {
     unsigned int numberOfOutputs = configuration.outputs + 3;
+    if (configuration.includeInputNames)
+      numberOfOutputs += configuration.inputs;
+    if (configuration.includeOutputNames)
+      numberOfOutputs += configuration.outputs;
     assert(numberOfOutputs <= std::numeric_limits<unsigned char>::max());
     return static_cast<unsigned char>(numberOfOutputs);
   } else {
@@ -90,9 +100,26 @@ DLLEXPORT void __stdcall GetInputName(unsigned char Channel,
         // Casting is ok because the source string is only ASCII, so most
         // significant bit doesn't matter.
         sprintf(reinterpret_cast<char*>(Name), "OUT%d", Channel);
-      } else {
-        Name[0] = '\0';
+        return;
+      } 
+
+      Channel -= configuration.outputs;
+      
+      if (configuration.includeInputNames) {
+        if (Channel < configuration.inputs) {
+          sprintf(reinterpret_cast<char*>(Name), "$I%d", Channel);
+          return;
+        }
+
+        Channel -= configuration.inputs;
       }
+      
+      if (configuration.includeOutputNames && Channel < configuration.outputs) {
+        sprintf(reinterpret_cast<char*>(Name), "$O%d", Channel);
+        return;
+      }
+
+      Name[0] = '\0';
   }
 }
 
@@ -122,9 +149,26 @@ DLLEXPORT void __stdcall GetOutputName(unsigned char Channel,
         // Casting is ok because the source string is only ASCII, so most
         // significant bit doesn't matter.
         sprintf(reinterpret_cast<char*>(Name), "OUT%d", Channel);
-      } else {
-        Name[0] = '\0';
+        return;
       }
+
+      Channel -= configuration.outputs;
+      
+      if (configuration.includeInputNames) {
+        if (Channel < configuration.inputs) {
+          sprintf(reinterpret_cast<char*>(Name), "$I%d", Channel);
+          return;
+        }
+
+        Channel -= configuration.inputs;
+      }
+      
+      if (configuration.includeOutputNames && Channel < configuration.outputs) {
+          sprintf(reinterpret_cast<char*>(Name), "$O%d", Channel);
+          return;
+      }
+  
+      Name[0] = '\0';
   }
 }
 

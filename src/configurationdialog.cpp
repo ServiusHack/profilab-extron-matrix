@@ -35,6 +35,9 @@ BOOL CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp) {
         SendDlgItemMessage(hwnd, IDC_COMPORT, CB_ADDSTRING, 0,
                            (LPARAM)(LPCTSTR)port.c_str());
       }
+
+      CheckDlgButton(hwnd, IDC_INPUTNAMEPINS, getter->configuration.includeInputNames);
+      CheckDlgButton(hwnd, IDC_OUTPUTNAMEPINS, getter->configuration.includeOutputNames);
       return TRUE;
     }
     case WM_COMMAND: {
@@ -51,6 +54,11 @@ BOOL CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp) {
             std::stoi(GetInputText(hwnd, IDC_INPUTS));
         getter->configuration.outputs =
             std::stoi(GetInputText(hwnd, IDC_OUTPUTS));
+
+        getter->configuration.includeInputNames = 
+          IsDlgButtonChecked(hwnd, IDC_INPUTNAMEPINS);
+        getter->configuration.includeOutputNames = 
+          IsDlgButtonChecked(hwnd, IDC_OUTPUTNAMEPINS);
 
         getter->got = true;
         DestroyWindow(hwnd);

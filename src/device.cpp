@@ -11,8 +11,6 @@
 #include <regex>
 #include <sstream>
 
-#include "description.h"
-
 namespace {
 
 namespace ResponsePatterns {
@@ -34,7 +32,6 @@ Device::Device(boost::asio::io_service &io_service)
     : number_of_presets(32)
     , number_of_virtual_inputs(0)
     , number_of_virtual_outputs(0)
-    , lg(boost::log::keywords::channel = "Device")
     , port(io_service)
     , buffer(2)
     , request_in_progress({RequestType::None, ""})
@@ -42,9 +39,9 @@ Device::Device(boost::asio::io_service &io_service)
 {
 }
 
-std::pair<std::string, Json::Value> Device::description() const
+uint8_t Device::get_number_of_virtual_inputs() const
 {
-    return Description(number_of_virtual_inputs, number_of_virtual_outputs, number_of_presets);
+    return number_of_virtual_inputs;
 }
 
 uint8_t Device::get_number_of_virtual_outputs() const
@@ -154,7 +151,6 @@ void Device::add_to_queue(Request command, QueueType queueType)
     if (request_in_progress.type == RequestType::None)
     {
         request_in_progress = command;
-        BOOST_LOG_SEV(lg, Logging::debug) << "Sending immediately: " << command.request;
         port.write_some(boost::asio::buffer(command.request));
     }
     else if (queueType == QueueType::HighPriority)
@@ -184,14 +180,12 @@ void Device::clear_queue(QueueType queueType)
 
 void Device::process_response(const std::string& response)
 {
-    BOOST_LOG_SEV(lg, Logging::debug) << boost::format("Received (%2%): %1%") % response % response.size();
-
     {
         std::smatch m;
         std::regex_match(response, m, ResponsePatterns::error);
         if (!m.empty())
         {
-            BOOST_LOG_SEV(lg, Logging::warning) << boost::format("Received %1% in response to %2%. Resending...") % response % request_in_progress.request;
+            OutputDebugString((boost::format("Received %1% in response to %2%. Resending...") % response % request_in_progress.request).str().c_str());
             port.write_some(boost::asio::buffer(request_in_progress.request));
             return;
         }
@@ -202,7 +196,6 @@ void Device::process_response(const std::string& response)
       std::regex_match(response, m, ResponsePatterns::reconfig);
       if (!m.empty())
       {
-            BOOST_LOG_SEV(lg, Logging::debug) << boost::format("Received %1%, requesting new data if necessary.") % response;
             unsigned int reconfig_id = boost::lexical_cast<unsigned int>(m.str(1));
             switch (reconfig_id) {
               case 14:
@@ -279,7 +272,7 @@ void Device::process_response(const std::string& response)
 
         if (m.empty())
         {
-            BOOST_LOG_SEV(lg, Logging::error) << "Unable to interpret the 'request information' response.";
+            reportError("Unable to interpret the 'request information' response.");
         }
         else
         {
@@ -294,10 +287,8 @@ void Device::process_response(const std::string& response)
             unsigned int sys_power_supply_status = boost::lexical_cast<unsigned int>(m.str(9));
             unsigned int diagnostics = boost::lexical_cast<unsigned int>(m.str(10));
 
-            boost::log::record rec = lg.open_record(boost::log::keywords::severity = Logging::info);
-            if (rec)
             {
-                boost::log::record_ostream strm(rec);
+                std::ostringstream strm;
                 strm << "Received device information:";
                 strm << std::endl << "  " << in_size << " physical inputs";
                 strm << std::endl << "  " << out_size << " physical outputs";
@@ -341,8 +332,7 @@ void Device::process_response(const std::string& response)
                 }
                 strm << std::endl << "  " << "Diagnostics code: " << diagnostics;
 
-                strm.flush();
-                lg.push_record(boost::move(rec));
+                OutputDebugString(strm.str().c_str());
             }
 
             number_of_virtual_inputs = in_map_size;
@@ -379,13 +369,12 @@ void Device::process_response(const std::string& response)
 
         if (m.empty())
         {
-            BOOST_LOG_SEV(lg, Logging::error) << "Unable to interpret the 'tie' response.";
+            reportError("Unable to interpret the 'tie' response.");
         }
         else
         {
             unsigned int out = boost::lexical_cast<unsigned int>(m.str(1));
             unsigned int in = boost::lexical_cast<unsigned int>(m.str(2));
-            BOOST_LOG_SEV(lg, Logging::debug) << boost::format("Read input %1% tied to output %2%") % in % out;
             current_input_of_output[out] = in;
             tieChanged(out, in);
         }
@@ -398,7 +387,7 @@ void Device::process_response(const std::string& response)
         std::regex_match(response, m, ResponsePatterns::current_configuration);
         if(m.empty())
         {
-            BOOST_LOG_SEV(lg, Logging::error) << "Unable to interpret the 'global preset ties' response.";
+            reportError("Unable to interpret the 'global preset ties' response.");
         }
         else
         {
@@ -407,7 +396,6 @@ void Device::process_response(const std::string& response)
                 unsigned int in;
                 response_stream >> in;
 
-                BOOST_LOG_SEV(lg, Logging::debug) << boost::format("Read video input %1% tied to %2%") % in % static_cast<unsigned int>(viewed_current_outputs);
                 tieChanged(++viewed_current_outputs, static_cast<uint8_t>(in));
 
                 if (viewed_current_outputs >= number_of_virtual_outputs)
@@ -432,10 +420,28 @@ void Device::process_response(const std::string& response)
         outputNameChanged(request_in_progress.index, response);
         break;
     }
+    case RequestType::WriteVirtualInputName:
+    {
+          if (response != "NamI")
+          {
+            reportError((boost::format("Unexpected response '%1%' with request %2%") % response % request_in_progress.request).str());
+          }
+          request_virtual_input_name(request_in_progress.index);
+          break;
+    }
+    case RequestType::WriteVirtualOutputName:
+    {
+          if (response != "NamO")
+          {
+            reportError((boost::format("Unexpected response '%1%' with request %2%") % response % request_in_progress.request).str());
+          }
+          request_virtual_output_name(request_in_progress.index);
+          break;
+    }
     default:
     {
         // Why did we get a response but did not expect one?
-        BOOST_LOG_SEV(lg, Logging::error) << boost::format("Unexpected response '%1%' with request type %2%") % response % request_in_progress.request;
+        reportError((boost::format("Unexpected response '%1%' with request type %2%") % response % request_in_progress.request).str());
         break;
     }
     }
@@ -470,7 +476,6 @@ void Device::process_response(const std::string& response)
             }
         }
 
-        BOOST_LOG_SEV(lg, Logging::debug) << "Sending next: " << request_in_progress.request;
         port.write_some(boost::asio::buffer(request_in_progress.request));
         return;
     }
@@ -481,12 +486,9 @@ void Device::process_response(const std::string& response)
 
 void Device::read_handler(const boost::system::error_code& ec, std::size_t bytes_transferred) {
     if (ec) {
-        BOOST_LOG_SEV(lg, Logging::error) << "Device communication error: " << ec.message();
-        should_exit();
+        reportError("Device communication error: " + ec.message());
         return;
     }
-
-    BOOST_LOG_SEV(lg, Logging::debug) << boost::format("Read %1% bytes.") % bytes_transferred;
 
     if (bytes_transferred == 0)
         return; // This seems to be the case when the port is closed, so we return early.

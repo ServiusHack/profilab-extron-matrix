@@ -54,11 +54,13 @@ SCENARIO("serialization of the configuration", "[configuration]") {
   }
 
   GIVEN("A configuration") {
-    std::array<unsigned char, 1 + 5 + 2 * 4> data{
+    std::array<unsigned char, 1 + 5 + 2 * 4 + 1 + 1> data{
         0x00,                          // present
         0x00, 0x00, 0x00, 0x00, 0x00,  // com port
         0x00, 0x00, 0x00, 0x00,        // inputs
-        0x00, 0x00, 0x00, 0x00         // inputs
+        0x00, 0x00, 0x00, 0x00,        // inputs
+        0x00,                          // include input names
+        0x00                           // include output names
     };
     double* PUser = reinterpret_cast<double*>(data.data());
 
@@ -67,13 +69,17 @@ SCENARIO("serialization of the configuration", "[configuration]") {
     configuration.comPort = "COM1";
     configuration.inputs = 10;
     configuration.outputs = 7;
+    configuration.includeInputNames = true;
+    configuration.includeOutputNames = true;
 
     WHEN("serializing the configuration") {
-      std::array<unsigned char, 1 + 5 + 2 * 4> expectedData{
+      std::array<unsigned char, 1 + 5 + 2 * 4 + 1 + 1> expectedData{
           0x01,                          // present
           'C',  'O',  'M',  '1',  0x00,  // com port
           0x0A, 0x00, 0x00, 0x00,        // inputs
-          0x07, 0x00, 0x00, 0x00         // inputs
+          0x07, 0x00, 0x00, 0x00,        // inputs
+          0x01,                          // include input names
+          0x01,                          // include output names
       };
 
       REQUIRE(configuration.Write());
@@ -95,7 +101,7 @@ SCENARIO("serialization of the configuration", "[configuration]") {
     configuration.present = true;
     // generate COM name which is one character too large
     configuration.comPort =
-        std::string(maxSize - 1 - 2 * sizeof(unsigned int) + 1, '.');
+        std::string(maxSize, '.');
     configuration.inputs = 10;
     configuration.outputs = 7;
 

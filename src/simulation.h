@@ -6,23 +6,26 @@
 #include "device.h"
 
 class Simulation {
- public:
+public:
   Simulation(const Configuration& configuration);
   ~Simulation();
 
   void Calculate(double* PInput, double* POutput, char** PStrings);
 
- private:
-  std::mutex mutex;
+private:
+Configuration configuration;
+std::unique_ptr<Device> device;
+boost::asio::io_service io_service;
+std::unique_ptr<boost::asio::io_service::work> work;
+std::unique_ptr<std::thread> thread;
 
-  Configuration configuration;
-  std::unique_ptr<Device> device;
-  boost::asio::io_service io_service;
-  std::unique_ptr<boost::asio::io_service::work> work;
-  std::unique_ptr<std::thread> thread;
-
-  std::vector<unsigned int> previousNormalizedPInput;
-  std::vector<double> nextPOutput;
-  std::string errorMessage;
-  size_t nextPOutputSizeInBytes = 0;
+std::mutex mutex;
+std::vector<unsigned int> previousNormalizedPInput;
+std::vector<std::string> previousInputNames;
+std::vector<std::string> previousOutputNames;
+std::vector<double> nextPOutput;
+std::vector<std::string> nextInputNames;
+std::vector<std::string> nextOutputNames;
+std::string errorMessage;
+size_t nextPOutputSizeInBytes = 0;
 };

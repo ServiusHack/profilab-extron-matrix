@@ -4,26 +4,29 @@ extern template struct trompeloeil::reporter<trompeloeil::specialized>;
 
 DeviceMock deviceMockInstance;
 
-Device::Device(uint8_t inputs,
-               uint8_t outputs,
-               boost::asio::io_service& io_service)
-    : number_of_inputs(0),
-      number_of_outputs(0),
-      port(io_service),
-      buffer(10),
-      request_last_sent_position(0),
-      in_status_response(false),
-      read_banner(true),
-      banner_detection_timer(io_service) {
-  deviceMockInstance.Constructor(this, inputs, outputs, io_service);
+Device::Device(boost::asio::io_service& io_service)
+    : number_of_presets(32)
+    , number_of_virtual_inputs(0)
+    , number_of_virtual_outputs(0)
+    , port(io_service)
+    , buffer(2)
+    , request_in_progress({RequestType::None, ""})
+    , viewed_current_outputs(0) {
+  deviceMockInstance.Constructor(this, io_service);
+}
+
+uint8_t Device::get_number_of_virtual_inputs() const
+{
+    return deviceMockInstance.get_number_of_virtual_inputs();
+}
+
+uint8_t Device::get_number_of_virtual_outputs() const
+{
+    return deviceMockInstance.get_number_of_virtual_outputs();
 }
 
 void Device::tie(unsigned int input, unsigned int output) {
   deviceMockInstance.tie(input, output);
-}
-
-void Device::audio_mute(unsigned int input, bool mute) {
-  deviceMockInstance.audio_mute(input, mute);
 }
 
 void Device::store(unsigned int index) {
@@ -32,6 +35,16 @@ void Device::store(unsigned int index) {
 
 void Device::recall(unsigned int index) {
   deviceMockInstance.recall(index);
+}
+
+void Device::set_input_name(uint8_t index, const std::string& name)
+{
+  deviceMockInstance.set_input_name(index, name);
+}
+
+void Device::set_output_name(uint8_t index, const std::string& name)
+{
+  deviceMockInstance.set_output_name(index, name);
 }
 
 void Device::open(const std::string& port_name) {
@@ -44,28 +57,4 @@ void Device::close() {
 
 void Device::initialize() {
   deviceMockInstance.initialize();
-}
-
-void Device::add_to_queue(Request command) {}
-
-void Device::read_banner_timeout(const boost::system::error_code& ec) {
-  deviceMockInstance.read_banner_timeout(ec);
-}
-
-void Device::read_banner_handler(const boost::system::error_code& ec,
-                                 std::size_t bytes_transferred) {
-  deviceMockInstance.read_banner_handler(ec, bytes_transferred);
-}
-
-void Device::read_handler(const boost::system::error_code& ec,
-                          std::size_t bytes_transferred) {
-  deviceMockInstance.read_handler(ec, bytes_transferred);
-}
-
-void Device::send_next_message() {
-  deviceMockInstance.send_next_message();
-}
-
-void Device::send_first_byte() {
-  deviceMockInstance.send_first_byte();
 }

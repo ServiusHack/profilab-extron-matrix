@@ -12,11 +12,15 @@ Configuration::Configuration(double* PUser)
     memcpy(&inputs, read_pointer, sizeof(inputs));
     read_pointer += sizeof(inputs);
     memcpy(&outputs, read_pointer, sizeof(outputs));
+
+    includeInputNames = *read_pointer == 1;
+    ++read_pointer;
+    includeOutputNames = *read_pointer == 1;
   }
 }
 
 bool Configuration::Write() {
-  size_t data_size = 1 + comPort.size() + 1 + sizeof(inputs) + sizeof(outputs);
+  size_t data_size = 1 + comPort.size() + 1 + sizeof(inputs) + sizeof(outputs) + 1 + 1;
 
   if (data_size > max_size) {
     return false;
@@ -33,6 +37,10 @@ bool Configuration::Write() {
   memcpy(write_pointer, reinterpret_cast<void*>(&inputs), sizeof(inputs));
   write_pointer += sizeof(inputs);
   memcpy(write_pointer, reinterpret_cast<void*>(&outputs), sizeof(outputs));
+  write_pointer += sizeof(outputs);
 
+  *write_pointer = includeInputNames ? 1 : 0;
+  write_pointer += 1;
+  *write_pointer = includeOutputNames ? 1 : 0;
   return true;
 }

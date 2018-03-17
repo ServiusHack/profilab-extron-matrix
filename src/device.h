@@ -9,10 +9,6 @@
 #include <boost/asio.hpp>
 #include <boost/asio/serial_port.hpp>
 
-#include <json/value.h>
-
-#include "rcsclient/logging.h"
-
 /**
  * @brief Interaction with the physical device.
  */
@@ -29,11 +25,7 @@ public:
      */
     explicit Device(boost::asio::io_service &io_service);
 
-    /**
-     * @brief Configuration of the device for the RegieControlSystem.
-     * @return string serialized JSON
-     */
-    std::pair<std::string, Json::Value> description() const;
+    uint8_t get_number_of_virtual_inputs() const;
 
     uint8_t get_number_of_virtual_outputs() const;
 
@@ -44,8 +36,6 @@ private:
     uint8_t number_of_virtual_inputs;
     //! Number of virtual outputs the device has.
     uint8_t number_of_virtual_outputs;
-    //! Logging object.
-    boost::log::sources::severity_channel_logger<Logging::severity_level> lg;
 
 // Device state
 private:
@@ -214,8 +204,7 @@ public:
     std::once_flag setupCallbackOnceFlag;
 
     /**
-      * @brief Callback when a fatal error occured and the application should exit.
+      * @brief Callback when an error occurred.
       */
-    std::function<void()> should_exit;
-
+    std::function<void(const std::string& error)> reportError;
 };
