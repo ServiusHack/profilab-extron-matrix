@@ -32,11 +32,13 @@ SCENARIO("serialization of the configuration", "[configuration]") {
   }
 
   GIVEN("A serialized configuration") {
-    std::array<unsigned char, 1 + 5 + 2 * 4> data{
+    std::array<unsigned char, 1 + 5 + 2 * 4 + 2> data{
         0x01,                          // present
         'C',  'O',  'M',  '7',  0x00,  // com port
         0x05, 0x00, 0x00, 0x00,        // inputs
-        0x03, 0x00, 0x00, 0x00         // inputs
+        0x03, 0x00, 0x00, 0x00,        // inputs
+        0x01,                          // include input names
+        0x00                           // include output names
     };
 
     double* PUser = reinterpret_cast<double*>(data.data());
@@ -49,6 +51,8 @@ SCENARIO("serialization of the configuration", "[configuration]") {
         REQUIRE(configuration.comPort == "COM7");
         REQUIRE(configuration.inputs == 5);
         REQUIRE(configuration.outputs == 3);
+        REQUIRE(configuration.includeInputNames == true);
+        REQUIRE(configuration.includeOutputNames == false);
       }
     }
   }

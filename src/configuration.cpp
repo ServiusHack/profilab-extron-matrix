@@ -12,6 +12,7 @@ Configuration::Configuration(double* PUser)
     memcpy(&inputs, read_pointer, sizeof(inputs));
     read_pointer += sizeof(inputs);
     memcpy(&outputs, read_pointer, sizeof(outputs));
+    read_pointer += sizeof(outputs);
 
     includeInputNames = *read_pointer == 1;
     ++read_pointer;
