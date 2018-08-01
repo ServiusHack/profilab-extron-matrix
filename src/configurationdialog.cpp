@@ -56,9 +56,9 @@ BOOL CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp) {
             std::stoi(GetInputText(hwnd, IDC_OUTPUTS));
 
         getter->configuration.includeInputNames = 
-          IsDlgButtonChecked(hwnd, IDC_INPUTNAMEPINS);
+           SendDlgItemMessage(hwnd, IDC_INPUTNAMEPINS, BM_GETCHECK, 0, 0) == BST_CHECKED;
         getter->configuration.includeOutputNames = 
-          IsDlgButtonChecked(hwnd, IDC_OUTPUTNAMEPINS);
+           SendDlgItemMessage(hwnd, IDC_OUTPUTNAMEPINS, BM_GETCHECK, 0, 0) == BST_CHECKED;
 
         getter->got = true;
         DestroyWindow(hwnd);
