@@ -1,6 +1,6 @@
 #include <assert.h>
-#include <thread>
 #include <mutex>
+#include <thread>
 
 #include "configurationdialog.h"
 
@@ -15,21 +15,23 @@ const char* ApplicationName = "Extron-Matrix";
 
 std::unique_ptr<Simulation> simulation;
 Configuration configuration;
-}  // namespace
+} // namespace
 
 /**
  * Call by ProfiLab when the users wants to configure the DLL.
  */
-DLLEXPORT void __stdcall CConfigure(double* PUser) {
+DLLEXPORT void __stdcall CConfigure(double* PUser)
+{
   ConfigurationDialog dlg(PUser);
 
   dlg.Get();
 
   if (!dlg.configuration.Write()) {
     MessageBox(
-        NULL,
-        "Configuration exceed 97 bytes. Unable to store it with ProfiLab.",
-        ApplicationName, MB_OK | MB_ICONEXCLAMATION);
+      NULL,
+      "Configuration exceed 97 bytes. Unable to store it with ProfiLab.",
+      ApplicationName,
+      MB_OK | MB_ICONEXCLAMATION);
   }
 }
 
@@ -39,7 +41,8 @@ DLLEXPORT void __stdcall CConfigure(double* PUser) {
  * We read the configuration from PUser here because this is the first method
  * called after a DLL is loaded.
  */
-DLLEXPORT unsigned char __stdcall CNumInputsEx(double* PUser) {
+DLLEXPORT unsigned char __stdcall CNumInputsEx(double* PUser)
+{
   configuration = Configuration(PUser);
   if (configuration.present) {
     unsigned int numberOfInputs = configuration.outputs + 2;
@@ -60,7 +63,8 @@ DLLEXPORT unsigned char __stdcall CNumInputsEx(double* PUser) {
 /**
  * Called by ProfiLab to get the configured number of outputs.
  */
-DLLEXPORT unsigned char __stdcall CNumOutputsEx(double* PUser) {
+DLLEXPORT unsigned char __stdcall CNumOutputsEx(double* PUser)
+{
   configuration = Configuration(PUser);
 
   if (configuration.present) {
@@ -83,7 +87,8 @@ DLLEXPORT unsigned char __stdcall CNumOutputsEx(double* PUser) {
  * Called by ProfiLab to get the name of an input channel.
  */
 DLLEXPORT void __stdcall GetInputName(unsigned char Channel,
-                                      unsigned char* Name) {
+                                      unsigned char* Name)
+{
   static const std::string storeInputName = "STORE";
   static const std::string recallInputName = "RECALL";
   static const std::string inputNames = "$INS";
@@ -97,29 +102,27 @@ DLLEXPORT void __stdcall GetInputName(unsigned char Channel,
       memcpy(Name, recallInputName.c_str(), recallInputName.size() + 1);
       break;
     default:
-      Channel -= 2;  // without the above inputs
+      Channel -= 2; // without the above inputs
       if (Channel < configuration.outputs) {
         // Casting is ok because the source string is only ASCII, so most
         // significant bit doesn't matter.
         sprintf(reinterpret_cast<char*>(Name), "OUT%d", Channel);
         return;
-      } 
+      }
 
       Channel -= configuration.outputs;
-      
+
       if (configuration.includeInputNames) {
-        if (Channel == 0)
-        {
+        if (Channel == 0) {
           memcpy(Name, inputNames.c_str(), inputNames.size() + 1);
           return;
         } else {
           --Channel;
         }
       }
-      
+
       if (configuration.includeOutputNames) {
-        if (Channel == 0)
-        {
+        if (Channel == 0) {
           memcpy(Name, outputNames.c_str(), outputNames.size() + 1);
           return;
         }
@@ -133,7 +136,8 @@ DLLEXPORT void __stdcall GetInputName(unsigned char Channel,
  * Called by ProfiLab to get the name of an output channel.
  */
 DLLEXPORT void __stdcall GetOutputName(unsigned char Channel,
-                                       unsigned char* Name) {
+                                       unsigned char* Name)
+{
   static const std::string connectedOutputName = "CON";
   static const std::string errorOutputName = "ERR";
   static const std::string errorStringOutputName = "$ERR";
@@ -148,11 +152,11 @@ DLLEXPORT void __stdcall GetOutputName(unsigned char Channel,
       memcpy(Name, errorOutputName.c_str(), errorOutputName.size() + 1);
       break;
     case 2:
-      memcpy(Name, errorStringOutputName.c_str(),
-             errorStringOutputName.size() + 1);
+      memcpy(
+        Name, errorStringOutputName.c_str(), errorStringOutputName.size() + 1);
       break;
     default:
-      Channel -= 3;  // without the above inputs
+      Channel -= 3; // without the above inputs
       if (Channel < configuration.outputs) {
         // Casting is ok because the source string is only ASCII, so most
         // significant bit doesn't matter.
@@ -161,25 +165,23 @@ DLLEXPORT void __stdcall GetOutputName(unsigned char Channel,
       }
 
       Channel -= configuration.outputs;
-      
+
       if (configuration.includeInputNames) {
-        if (Channel == 0)
-        {
+        if (Channel == 0) {
           memcpy(Name, inputNames.c_str(), inputNames.size() + 1);
           return;
         } else {
           --Channel;
         }
       }
-      
+
       if (configuration.includeOutputNames) {
-        if (Channel == 0)
-        {
+        if (Channel == 0) {
           memcpy(Name, outputNames.c_str(), outputNames.size() + 1);
           return;
         }
       }
-  
+
       Name[0] = '\0';
   }
 }
@@ -189,7 +191,8 @@ DLLEXPORT void __stdcall GetOutputName(unsigned char Channel,
  */
 DLLEXPORT void __stdcall CSimStart(double* /*PInput*/,
                                    double* /*POutput*/,
-                                   double* PUser) {
+                                   double* PUser)
+{
   const Configuration configuration = Configuration(PUser);
 
   simulation = std::make_unique<Simulation>(configuration);
@@ -201,7 +204,8 @@ DLLEXPORT void __stdcall CSimStart(double* /*PInput*/,
 DLLEXPORT void __stdcall CCalculateEx(double* PInput,
                                       double* POutput,
                                       double* /*PUser*/,
-                                      char** PStrings) {
+                                      char** PStrings)
+{
   simulation->Calculate(PInput, POutput, PStrings);
 }
 
@@ -214,7 +218,8 @@ DLLEXPORT void __stdcall CCalculateEx(double* PInput,
  */
 DLLEXPORT void __stdcall CSimStop(double* /*PInput*/,
                                   double* /*POutput*/,
-                                  double* /*PUser*/) {
+                                  double* /*PUser*/)
+{
   simulation.reset();
 }
 
@@ -223,7 +228,8 @@ DLLEXPORT void __stdcall CSimStop(double* /*PInput*/,
  */
 BOOL APIENTRY DllMain(HINSTANCE hInst /* Library instance handle. */,
                       DWORD reason /* Reason this function is being called. */,
-                      LPVOID /*reserved*/ /* Not used. */) {
+                      LPVOID /*reserved*/ /* Not used. */)
+{
   switch (reason) {
     case DLL_PROCESS_ATTACH:
       ConfigurationDialog::dllInstance = hInst;

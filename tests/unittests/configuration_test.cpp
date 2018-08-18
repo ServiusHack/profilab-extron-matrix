@@ -17,8 +17,8 @@ SCENARIO("serialization of the configuration", "[configuration]") {
   }
 
   GIVEN("No stored configuration") {
-    std::array<unsigned char, 1 * 8> data{0x00, 0x00, 0x00, 0x00,
-                                          0x00, 0x00, 0x00, 0x00};
+    std::array<unsigned char, 1 * 8> data{ 0x00, 0x00, 0x00, 0x00,
+                                           0x00, 0x00, 0x00, 0x00 };
 
     double* PUser = reinterpret_cast<double*>(data.data());
 
@@ -33,12 +33,12 @@ SCENARIO("serialization of the configuration", "[configuration]") {
 
   GIVEN("A serialized configuration") {
     std::array<unsigned char, 1 + 5 + 2 * 4 + 2> data{
-        0x01,                          // present
-        'C',  'O',  'M',  '7',  0x00,  // com port
-        0x05, 0x00, 0x00, 0x00,        // inputs
-        0x03, 0x00, 0x00, 0x00,        // inputs
-        0x01,                          // include input names
-        0x00                           // include output names
+      0x01,                         // present
+      'C',  'O',  'M',  '7',  0x00, // com port
+      0x05, 0x00, 0x00, 0x00,       // inputs
+      0x03, 0x00, 0x00, 0x00,       // inputs
+      0x01,                         // include input names
+      0x00                          // include output names
     };
 
     double* PUser = reinterpret_cast<double*>(data.data());
@@ -59,12 +59,12 @@ SCENARIO("serialization of the configuration", "[configuration]") {
 
   GIVEN("A configuration") {
     std::array<unsigned char, 1 + 5 + 2 * 4 + 1 + 1> data{
-        0x00,                          // present
-        0x00, 0x00, 0x00, 0x00, 0x00,  // com port
-        0x00, 0x00, 0x00, 0x00,        // inputs
-        0x00, 0x00, 0x00, 0x00,        // inputs
-        0x00,                          // include input names
-        0x00                           // include output names
+      0x00,                         // present
+      0x00, 0x00, 0x00, 0x00, 0x00, // com port
+      0x00, 0x00, 0x00, 0x00,       // inputs
+      0x00, 0x00, 0x00, 0x00,       // inputs
+      0x00,                         // include input names
+      0x00                          // include output names
     };
     double* PUser = reinterpret_cast<double*>(data.data());
 
@@ -78,12 +78,12 @@ SCENARIO("serialization of the configuration", "[configuration]") {
 
     WHEN("serializing the configuration") {
       std::array<unsigned char, 1 + 5 + 2 * 4 + 1 + 1> expectedData{
-          0x01,                          // present
-          'C',  'O',  'M',  '1',  0x00,  // com port
-          0x0A, 0x00, 0x00, 0x00,        // inputs
-          0x07, 0x00, 0x00, 0x00,        // inputs
-          0x01,                          // include input names
-          0x01,                          // include output names
+        0x01,                         // present
+        'C',  'O',  'M',  '1',  0x00, // com port
+        0x0A, 0x00, 0x00, 0x00,       // inputs
+        0x07, 0x00, 0x00, 0x00,       // inputs
+        0x01,                         // include input names
+        0x01,                         // include output names
       };
 
       REQUIRE(configuration.Write());
@@ -97,15 +97,14 @@ SCENARIO("serialization of the configuration", "[configuration]") {
   GIVEN("A too large configuration") {
     size_t maxSize = sizeof(double) * 100;
     std::array<unsigned char, 1> data{
-        0x00,  // present
+      0x00, // present
     };
     double* PUser = reinterpret_cast<double*>(data.data());
 
     Configuration configuration(PUser);
     configuration.present = true;
     // generate COM name which is one character too large
-    configuration.comPort =
-        std::string(maxSize, '.');
+    configuration.comPort = std::string(maxSize, '.');
     configuration.inputs = 10;
     configuration.outputs = 7;
 

@@ -1,7 +1,8 @@
 #include "configuration.h"
 
 Configuration::Configuration(double* PUser)
-    : user_data(reinterpret_cast<char*>(PUser)) {
+  : user_data(reinterpret_cast<char*>(PUser))
+{
   present = user_data[0] == 1;
   if (present) {
     char* read_pointer = user_data + 1;
@@ -20,8 +21,10 @@ Configuration::Configuration(double* PUser)
   }
 }
 
-bool Configuration::Write() {
-  size_t data_size = 1 + comPort.size() + 1 + sizeof(inputs) + sizeof(outputs) + 1 + 1;
+bool Configuration::Write()
+{
+  size_t data_size =
+    1 + comPort.size() + 1 + sizeof(inputs) + sizeof(outputs) + 1 + 1;
 
   if (data_size > max_size) {
     return false;

@@ -6,11 +6,14 @@
 #include "listserialports.h"
 
 ConfigurationDialog::ConfigurationDialog(double* PUser)
-    : got(false), configuration(PUser) {}
+  : got(false)
+  , configuration(PUser)
+{}
 
 HINSTANCE ConfigurationDialog::dllInstance = NULL;
 
-std::string GetInputText(HWND dlg, int resid) {
+std::string GetInputText(HWND dlg, int resid)
+{
   HWND hc = GetDlgItem(dlg, resid);
   int n = GetWindowTextLength(hc) + 1;
   std::string s(n, 0);
@@ -19,7 +22,8 @@ std::string GetInputText(HWND dlg, int resid) {
   return s;
 }
 
-BOOL CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp) {
+BOOL CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp)
+{
   static ConfigurationDialog* getter = 0;
   switch (message) {
     case WM_INITDIALOG: {
@@ -32,12 +36,14 @@ BOOL CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp) {
                     std::to_string(getter->configuration.outputs).c_str());
 
       for (const std::string& port : listSerialPorts()) {
-        SendDlgItemMessage(hwnd, IDC_COMPORT, CB_ADDSTRING, 0,
-                           (LPARAM)(LPCTSTR)port.c_str());
+        SendDlgItemMessage(
+          hwnd, IDC_COMPORT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)port.c_str());
       }
 
-      CheckDlgButton(hwnd, IDC_INPUTNAMEPINS, getter->configuration.includeInputNames);
-      CheckDlgButton(hwnd, IDC_OUTPUTNAMEPINS, getter->configuration.includeOutputNames);
+      CheckDlgButton(
+        hwnd, IDC_INPUTNAMEPINS, getter->configuration.includeInputNames);
+      CheckDlgButton(
+        hwnd, IDC_OUTPUTNAMEPINS, getter->configuration.includeOutputNames);
       return TRUE;
     }
     case WM_COMMAND: {
@@ -51,14 +57,16 @@ BOOL CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp) {
         getter->configuration.comPort = GetInputText(hwnd, IDC_COMPORT);
 
         getter->configuration.inputs =
-            std::stoi(GetInputText(hwnd, IDC_INPUTS));
+          std::stoi(GetInputText(hwnd, IDC_INPUTS));
         getter->configuration.outputs =
-            std::stoi(GetInputText(hwnd, IDC_OUTPUTS));
+          std::stoi(GetInputText(hwnd, IDC_OUTPUTS));
 
-        getter->configuration.includeInputNames = 
-           SendDlgItemMessage(hwnd, IDC_INPUTNAMEPINS, BM_GETCHECK, 0, 0) == BST_CHECKED;
-        getter->configuration.includeOutputNames = 
-           SendDlgItemMessage(hwnd, IDC_OUTPUTNAMEPINS, BM_GETCHECK, 0, 0) == BST_CHECKED;
+        getter->configuration.includeInputNames =
+          SendDlgItemMessage(hwnd, IDC_INPUTNAMEPINS, BM_GETCHECK, 0, 0) ==
+          BST_CHECKED;
+        getter->configuration.includeOutputNames =
+          SendDlgItemMessage(hwnd, IDC_OUTPUTNAMEPINS, BM_GETCHECK, 0, 0) ==
+          BST_CHECKED;
 
         getter->got = true;
         DestroyWindow(hwnd);
@@ -77,10 +85,13 @@ BOOL CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp) {
   return FALSE;
 }
 
-void ConfigurationDialog::Get() {
-  HWND dlg =
-      CreateDialogParam(dllInstance, MAKEINTRESOURCE(IDD_CONFIGURATION_DIALOG),
-                        0, DialogProc, (LPARAM)this);
+void ConfigurationDialog::Get()
+{
+  HWND dlg = CreateDialogParam(dllInstance,
+                               MAKEINTRESOURCE(IDD_CONFIGURATION_DIALOG),
+                               0,
+                               DialogProc,
+                               (LPARAM)this);
   MSG msg;
   while (GetMessage(&msg, 0, 0, 0)) {
     if (!IsDialogMessage(dlg, &msg)) {

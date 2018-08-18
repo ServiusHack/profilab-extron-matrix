@@ -1,8 +1,9 @@
-#include <afxwin.h>  // we are an MFC app so directly including Windows.h is not allowed
+#include <afxwin.h> // we are an MFC app so directly including Windows.h is not allowed
 
 #include "configuration.h"
 
-struct ConfigurationDialog {
+struct ConfigurationDialog
+{
   Configuration configuration;
   static HINSTANCE dllInstance;
   bool got;

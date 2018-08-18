@@ -4,14 +4,15 @@
 #include <cstring>
 
 namespace {
-unsigned int normalizeToUnsignedInt(double value) {
+unsigned int normalizeToUnsignedInt(double value)
+{
   return static_cast<unsigned int>(value);
 }
 }
 
-
 Simulation::Simulation(const Configuration& configuration)
-  : configuration(configuration) {
+  : configuration(configuration)
+{
 
   previousNormalizedPInput.clear();
   previousNormalizedPInput.resize(2 + configuration.outputs,
@@ -45,9 +46,15 @@ Simulation::Simulation(const Configuration& configuration)
       std::unique_lock<std::mutex>(mutex);
       std::ostringstream str;
       if (device->get_number_of_virtual_outputs() != configuration.outputs)
-        str << "Device has " << std::to_string(device->get_number_of_virtual_outputs()) << " outputs but DLL is configured for " << configuration.outputs << ".";
+        str << "Device has "
+            << std::to_string(device->get_number_of_virtual_outputs())
+            << " outputs but DLL is configured for " << configuration.outputs
+            << ".";
       if (device->get_number_of_virtual_inputs() != configuration.inputs)
-        str << "Device has " << std::to_string(device->get_number_of_virtual_inputs()) << " inputs but DLL is configured for " << configuration.inputs << ".";
+        str << "Device has "
+            << std::to_string(device->get_number_of_virtual_inputs())
+            << " inputs but DLL is configured for " << configuration.inputs
+            << ".";
 
       const std::string message = str.str();
       if (!message.empty()) {
@@ -61,20 +68,26 @@ Simulation::Simulation(const Configuration& configuration)
       std::unique_lock<std::mutex>(mutex);
       nextPOutput[3 + out - 1] = in;
     };
-    device->inputNameChanged = [this](uint8_t channel, const std::string& name) {
+    device->inputNameChanged = [this](uint8_t channel,
+                                      const std::string& name) {
       std::unique_lock<std::mutex>(mutex);
-      auto begin = channel == 1
-                       ? nextInputNames.begin()
-                       : std::next(boost::algorithm::find_nth(nextInputNames, ";", channel - 2).begin());
-      auto end = std::prev(boost::algorithm::find_nth(nextInputNames, ";", channel - 1).end());
+      auto begin = channel == 1 ? nextInputNames.begin()
+                                : std::next(boost::algorithm::find_nth(
+                                              nextInputNames, ";", channel - 2)
+                                              .begin());
+      auto end = std::prev(
+        boost::algorithm::find_nth(nextInputNames, ";", channel - 1).end());
       nextInputNames.replace(begin, end, name);
     };
-    device->outputNameChanged = [this](uint8_t channel, const std::string& name) {
+    device->outputNameChanged = [this](uint8_t channel,
+                                       const std::string& name) {
       std::unique_lock<std::mutex>(mutex);
-      auto begin = channel == 1
-                       ? nextOutputNames.begin()
-                       : std::next(boost::algorithm::find_nth(nextOutputNames, ";", channel - 2).begin());
-      auto end = std::prev(boost::algorithm::find_nth(nextOutputNames, ";", channel - 1).end());
+      auto begin = channel == 1 ? nextOutputNames.begin()
+                                : std::next(boost::algorithm::find_nth(
+                                              nextOutputNames, ";", channel - 2)
+                                              .begin());
+      auto end = std::prev(
+        boost::algorithm::find_nth(nextOutputNames, ";", channel - 1).end());
       nextOutputNames.replace(begin, end, name);
     };
     device->reportError = [this](const std::string& message) {
@@ -89,7 +102,8 @@ Simulation::Simulation(const Configuration& configuration)
   }
 }
 
-Simulation::~Simulation() {
+Simulation::~Simulation()
+{
   device->close();
   work.reset();
   if (thread->joinable())
@@ -97,7 +111,6 @@ Simulation::~Simulation() {
   thread.reset();
   device.reset();
 }
-
 
 void Simulation::Calculate(double* PInput, double* POutput, char** PStrings)
 {
@@ -129,52 +142,53 @@ void Simulation::Calculate(double* PInput, double* POutput, char** PStrings)
       }
     }
 
-    size_t offset = 2;  // store and recall from above
+    size_t offset = 2; // store and recall from above
 
     for (unsigned int i = 0; i < configuration.outputs; i++) {
-      const unsigned int normalizedValue = normalizeToUnsignedInt(PInput[offset + i]);
+      const unsigned int normalizedValue =
+        normalizeToUnsignedInt(PInput[offset + i]);
       if (previousNormalizedPInput[offset + i] != normalizedValue) {
         previousNormalizedPInput[offset + i] = normalizedValue;
-        device->tie(normalizedValue, i + 1);  // i is 0-based but device parameters are 1-based
+        device->tie(normalizedValue,
+                    i + 1); // i is 0-based but device parameters are 1-based
       }
     }
 
-  offset += configuration.outputs;
+    offset += configuration.outputs;
 
- if (configuration.includeInputNames) {
-   char* a = PStrings[offset];
-   char* b = strstr(a, ";");
-   size_t i = 0;
-   while (a != nullptr && i < previousInputNames.size()) {
-     size_t a_len = b == nullptr ? strlen(a) : static_cast<size_t>(b - a);
-     if (strncmp(previousInputNames[i].c_str(), a, a_len) != 0) {
-       previousInputNames[i] = std::string(a, a_len);
-       device->set_input_name(i + 1, previousInputNames[i]);
-     }
-     ++i;
-     a = b == nullptr ? nullptr : b + 1;
-     b = a == nullptr ? nullptr : strstr(a, ";");
-   }
+    if (configuration.includeInputNames) {
+      char* a = PStrings[offset];
+      char* b = strstr(a, ";");
+      size_t i = 0;
+      while (a != nullptr && i < previousInputNames.size()) {
+        size_t a_len = b == nullptr ? strlen(a) : static_cast<size_t>(b - a);
+        if (strncmp(previousInputNames[i].c_str(), a, a_len) != 0) {
+          previousInputNames[i] = std::string(a, a_len);
+          device->set_input_name(i + 1, previousInputNames[i]);
+        }
+        ++i;
+        a = b == nullptr ? nullptr : b + 1;
+        b = a == nullptr ? nullptr : strstr(a, ";");
+      }
 
       offset += 1;
     }
 
-  if (configuration.includeOutputNames) {
-    char* a = PStrings[offset];
-    char* b = strstr(a, ";");
-    size_t i = 0;
-    while (a != nullptr && i < previousOutputNames.size()) {
-      size_t a_len = b == nullptr ? strlen(a) : static_cast<size_t>(b - a);
-      if (strncmp(previousOutputNames[i].c_str(), a, a_len) != 0) {
-        previousOutputNames[i] = std::string(a, a_len);
-        device->set_output_name(i + 1, previousOutputNames[i]);
+    if (configuration.includeOutputNames) {
+      char* a = PStrings[offset];
+      char* b = strstr(a, ";");
+      size_t i = 0;
+      while (a != nullptr && i < previousOutputNames.size()) {
+        size_t a_len = b == nullptr ? strlen(a) : static_cast<size_t>(b - a);
+        if (strncmp(previousOutputNames[i].c_str(), a, a_len) != 0) {
+          previousOutputNames[i] = std::string(a, a_len);
+          device->set_output_name(i + 1, previousOutputNames[i]);
+        }
+        ++i;
+        a = b == nullptr ? nullptr : b + 1;
+        b = a == nullptr ? nullptr : strstr(a, ";");
       }
-      ++i;
-      a = b == nullptr ? nullptr : b + 1;
-      b = a == nullptr ? nullptr : strstr(a, ";");
     }
-  }
-
   }
 
   memcpy(POutput, nextPOutput.data(), nextPOutputSizeInBytes);

@@ -3,4 +3,5 @@ BasedOnStyle: Mozilla
 AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
 NamespaceIndentation: Inner
+BreakBeforeBraces: Attach
 ...
