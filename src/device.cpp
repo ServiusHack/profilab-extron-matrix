@@ -180,270 +180,269 @@ void Device::clear_queue(QueueType queueType)
 
 void Device::process_response(const std::string& response)
 {
+    std::smatch m;
+    std::regex_match(response, m, ResponsePatterns::error);
+    if (!m.empty())
     {
-        std::smatch m;
-        std::regex_match(response, m, ResponsePatterns::error);
-        if (!m.empty())
-        {
-            OutputDebugString((boost::format("Received %1% in response to %2%. Resending...") % response % request_in_progress.request).str().c_str());
-            port.write_some(boost::asio::buffer(request_in_progress.request));
-            return;
-        }
+        std::string error_message = (boost::format("Received %1% in response to %2%.") % response % request_in_progress.request).str().c_str();
+        reportError(error_message);
     }
-
+    else
     {
-      std::smatch m;
-      std::regex_match(response, m, ResponsePatterns::reconfig);
-      if (!m.empty())
-      {
-            unsigned int reconfig_id = boost::lexical_cast<unsigned int>(m.str(1));
-            switch (reconfig_id) {
-              case 14:
-                // Connections changed
-                add_to_queue(Commands::request_information, QueueType::LowPriority);
-                break;
-              case 17:
-                // Name change for virtual input #1-16
-                for (uint8_t input = 1; input <= 16; ++input)
-                {
-                    request_virtual_input_name(input);
-                }
-                break;
-              case 18:
-                // Name change for virtual input #17-32
-                for (uint8_t input = 17; input <= 32; ++input)
-                {
-                    request_virtual_input_name(input);
-                }
-                break;
-              case 19:
-                // Name change for virtual input #33-48
-                for (uint8_t input = 33; input <= 48; ++input)
-                {
-                    request_virtual_input_name(input);
-                }
-                break;
-              case 20:
-                // Name change for virtual input #49-64
-                for (uint8_t input = 49; input <= 64; ++input)
-                {
-                    request_virtual_input_name(input);
-                }
-                break;
-              case 21:
-                // Name change for virtual output #1-16
-                for (uint8_t output = 1; output <= 16; ++output)
-                {
-                    request_virtual_output_name(output);
-                }
-                break;
-              case 22:
-                // Name change for virtual output #17-32
-                for (uint8_t output = 17; output <= 32; ++output)
-                {
-                    request_virtual_output_name(output);
-                }
-                break;
-              case 23:
-                // Name change for virtual output #33-48
-                for (uint8_t output = 33; output <= 48; ++output)
-                {
-                    request_virtual_output_name(output);
-                }
-                break;
-              case 24:
-                // Name change for virtual output #49-64
-                for (uint8_t output = 49; output <= 64; ++output)
-                {
-                    request_virtual_output_name(output);
-                }
-                break;
-            }
-            return;
-      }
-    }
-
-    switch (request_in_progress.type)
-    {
-    case RequestType::RequestInformation:
-    {
-        std::smatch m;
-        std::regex_match(response, m, ResponsePatterns::request_information);
-
-        if (m.empty())
         {
-            reportError("Unable to interpret the 'request information' response.");
-        }
-        else
-        {
-            unsigned int in_size = boost::lexical_cast<unsigned int>(m.str(1));
-            unsigned int out_size = boost::lexical_cast<unsigned int>(m.str(2));
-            unsigned int technology = boost::lexical_cast<unsigned int>(m.str(3));
-            unsigned int number_of_units = boost::lexical_cast<unsigned int>(m.str(4));
-            unsigned int in_map_size = boost::lexical_cast<unsigned int>(m.str(5));
-            unsigned int out_map_size = boost::lexical_cast<unsigned int>(m.str(6));
-            bool video_muted = boost::lexical_cast<unsigned int>(m.str(7)) == 1;
-            bool audio_muted = boost::lexical_cast<unsigned int>(m.str(8)) == 1;
-            unsigned int sys_power_supply_status = boost::lexical_cast<unsigned int>(m.str(9));
-            unsigned int diagnostics = boost::lexical_cast<unsigned int>(m.str(10));
-
+            std::smatch m;
+            std::regex_match(response, m, ResponsePatterns::reconfig);
+            if (!m.empty())
             {
-                std::ostringstream strm;
-                strm << "Received device information:";
-                strm << std::endl << "  " << in_size << " physical inputs";
-                strm << std::endl << "  " << out_size << " physical outputs";
-                switch (technology)
-                {
-                    case 0:
-                        strm << std::endl << "  BME not present";
-                        break;
-                    case 1:
-                        strm << std::endl << "  wideband";
-                        break;
-                    case 2:
-                        strm << std::endl << "  Lo-Res";
-                        break;
-                    case 3:
-                        strm << std::endl << "  Sync";
-                        break;
-                    case 4:
-                        strm << std::endl << "  Audio";
-                        break;
-                }
-                strm << std::endl << "  " << number_of_units << " unit(s)";
-                strm << std::endl << "  " << in_map_size << " virtual inputs";
-                strm << std::endl << "  " << out_map_size << " virtual outputs";
-                strm << std::endl << "  " << (video_muted ? "video muted" : "video not muted");
-                strm << std::endl << "  " << (audio_muted ? "audio muted" : "audio not muted");
-                switch (sys_power_supply_status)
-                {
-                    case 0:
-                        strm << std::endl << "  off or dead power supply";
-                        break;
-                    case 1:
-                        strm << std::endl << "  no redundant power supply, using main";
-                        break;
-                    case 2:
-                        strm << std::endl << "  using redundant power supply";
-                        break;
-                    case 3:
-                        strm << std::endl << "  has redundant power supply, using main";
-                        break;
-                }
-                strm << std::endl << "  " << "Diagnostics code: " << diagnostics;
-
-                OutputDebugString(strm.str().c_str());
-            }
-
-            number_of_virtual_inputs = in_map_size;
-            number_of_virtual_outputs = out_map_size;
-            current_input_of_output.resize(number_of_virtual_outputs, 0);
-            input_names.resize(number_of_virtual_inputs, "");
-            output_names.resize(number_of_virtual_outputs, "");
-            std::call_once(setupCallbackOnceFlag, setupCallback);
-
-            request_begin_current_configuration_requests();
-            for (unsigned int start_output = 1; start_output <= number_of_virtual_outputs; start_output += 16)
-            {
-                request_current_configuration(start_output);
-            }
-
-            for (uint8_t output = 1; output <= number_of_virtual_outputs; ++output)
-            {
-                request_virtual_output_name(output);
-            }
-
-            for (uint8_t input = 1; input <= number_of_virtual_outputs; ++input)
-            {
-
-                request_virtual_input_name(input);
-            }
-        }
-
-        break;
-    }
-    case RequestType::Tie:
-    {
-        std::smatch m;
-        std::regex_match(response, m, ResponsePatterns::tie);
-
-        if (m.empty())
-        {
-            reportError("Unable to interpret the 'tie' response.");
-        }
-        else
-        {
-            unsigned int out = boost::lexical_cast<unsigned int>(m.str(1));
-            unsigned int in = boost::lexical_cast<unsigned int>(m.str(2));
-            current_input_of_output[out] = in;
-            tieChanged(out, in);
-        }
-
-        break;
-    }
-    case RequestType::RequestCurrentConfiguration:
-    {
-        std::smatch m;
-        std::regex_match(response, m, ResponsePatterns::current_configuration);
-        if(m.empty())
-        {
-            reportError("Unable to interpret the 'global preset ties' response.");
-        }
-        else
-        {
-            std::stringstream response_stream(response);
-            for (unsigned int out = 1; out <= 16; ++out) {
-                unsigned int in;
-                response_stream >> in;
-
-                tieChanged(++viewed_current_outputs, static_cast<uint8_t>(in));
-
-                if (viewed_current_outputs >= number_of_virtual_outputs)
-                {
-                    std::call_once(connectedCallbackOnceFlag, connectedCallback);
+                unsigned int reconfig_id = boost::lexical_cast<unsigned int>(m.str(1));
+                switch (reconfig_id) {
+                  case 14:
+                    // Connections changed
+                    add_to_queue(Commands::request_information, QueueType::LowPriority);
+                    break;
+                  case 17:
+                    // Name change for virtual input #1-16
+                    for (uint8_t input = 1; input <= 16; ++input)
+                    {
+                      request_virtual_input_name(input);
+                    }
+                    break;
+                  case 18:
+                    // Name change for virtual input #17-32
+                    for (uint8_t input = 17; input <= 32; ++input)
+                    {
+                      request_virtual_input_name(input);
+                    }
+                    break;
+                  case 19:
+                    // Name change for virtual input #33-48
+                    for (uint8_t input = 33; input <= 48; ++input)
+                    {
+                      request_virtual_input_name(input);
+                    }
+                    break;
+                  case 20:
+                    // Name change for virtual input #49-64
+                    for (uint8_t input = 49; input <= 64; ++input)
+                    {
+                      request_virtual_input_name(input);
+                    }
+                    break;
+                  case 21:
+                    // Name change for virtual output #1-16
+                    for (uint8_t output = 1; output <= 16; ++output)
+                    {
+                      request_virtual_output_name(output);
+                    }
+                    break;
+                  case 22:
+                    // Name change for virtual output #17-32
+                    for (uint8_t output = 17; output <= 32; ++output)
+                    {
+                      request_virtual_output_name(output);
+                    }
+                    break;
+                  case 23:
+                    // Name change for virtual output #33-48
+                    for (uint8_t output = 33; output <= 48; ++output)
+                    {
+                      request_virtual_output_name(output);
+                    }
+                    break;
+                  case 24:
+                    // Name change for virtual output #49-64
+                    for (uint8_t output = 49; output <= 64; ++output)
+                    {
+                      request_virtual_output_name(output);
+                    }
                     break;
                 }
+                return;
             }
         }
 
-        break;
-    }
-    case RequestType::ReadVirtualInputName:
-    {
-        input_names[request_in_progress.index - 1] = response;
-        inputNameChanged(request_in_progress.index, response);
-        break;
-    }
-    case RequestType::ReadVirtualOutputName:
-    {
-        output_names[request_in_progress.index - 1] = response;
-        outputNameChanged(request_in_progress.index, response);
-        break;
-    }
-    case RequestType::WriteVirtualInputName:
-    {
+        switch (request_in_progress.type)
+        {
+        case RequestType::RequestInformation:
+        {
+            std::smatch m;
+            std::regex_match(response, m, ResponsePatterns::request_information);
+
+            if (m.empty())
+            {
+                reportError("Unable to interpret the 'request information' response.");
+            }
+            else
+            {
+                unsigned int in_size = boost::lexical_cast<unsigned int>(m.str(1));
+                unsigned int out_size = boost::lexical_cast<unsigned int>(m.str(2));
+                unsigned int technology = boost::lexical_cast<unsigned int>(m.str(3));
+                unsigned int number_of_units = boost::lexical_cast<unsigned int>(m.str(4));
+                unsigned int in_map_size = boost::lexical_cast<unsigned int>(m.str(5));
+                unsigned int out_map_size = boost::lexical_cast<unsigned int>(m.str(6));
+                bool video_muted = boost::lexical_cast<unsigned int>(m.str(7)) == 1;
+                bool audio_muted = boost::lexical_cast<unsigned int>(m.str(8)) == 1;
+                unsigned int sys_power_supply_status = boost::lexical_cast<unsigned int>(m.str(9));
+                unsigned int diagnostics = boost::lexical_cast<unsigned int>(m.str(10));
+
+                {
+                    std::ostringstream strm;
+                    strm << "Received device information:";
+                    strm << std::endl << "  " << in_size << " physical inputs";
+                    strm << std::endl << "  " << out_size << " physical outputs";
+                    switch (technology)
+                    {
+                        case 0:
+                            strm << std::endl << "  BME not present";
+                            break;
+                        case 1:
+                            strm << std::endl << "  wideband";
+                            break;
+                        case 2:
+                            strm << std::endl << "  Lo-Res";
+                            break;
+                        case 3:
+                            strm << std::endl << "  Sync";
+                            break;
+                        case 4:
+                            strm << std::endl << "  Audio";
+                            break;
+                    }
+                    strm << std::endl << "  " << number_of_units << " unit(s)";
+                    strm << std::endl << "  " << in_map_size << " virtual inputs";
+                    strm << std::endl << "  " << out_map_size << " virtual outputs";
+                    strm << std::endl << "  " << (video_muted ? "video muted" : "video not muted");
+                    strm << std::endl << "  " << (audio_muted ? "audio muted" : "audio not muted");
+                    switch (sys_power_supply_status)
+                    {
+                        case 0:
+                            strm << std::endl << "  off or dead power supply";
+                            break;
+                        case 1:
+                            strm << std::endl << "  no redundant power supply, using main";
+                            break;
+                        case 2:
+                            strm << std::endl << "  using redundant power supply";
+                            break;
+                        case 3:
+                            strm << std::endl << "  has redundant power supply, using main";
+                            break;
+                    }
+                    strm << std::endl << "  " << "Diagnostics code: " << diagnostics;
+
+                    OutputDebugString(strm.str().c_str());
+                }
+
+                number_of_virtual_inputs = in_map_size;
+                number_of_virtual_outputs = out_map_size;
+                current_input_of_output.resize(number_of_virtual_outputs, 0);
+                input_names.resize(number_of_virtual_inputs, "");
+                output_names.resize(number_of_virtual_outputs, "");
+                std::call_once(setupCallbackOnceFlag, setupCallback);
+
+                request_begin_current_configuration_requests();
+                for (unsigned int start_output = 1; start_output <= number_of_virtual_outputs; start_output += 16)
+                {
+                    request_current_configuration(start_output);
+                }
+
+                for (uint8_t output = 1; output <= number_of_virtual_outputs; ++output)
+                {
+                    request_virtual_output_name(output);
+                }
+
+                for (uint8_t input = 1; input <= number_of_virtual_outputs; ++input)
+                {
+
+                    request_virtual_input_name(input);
+                }
+            }
+
+            break;
+        }
+        case RequestType::Tie:
+        {
+            std::smatch m;
+            std::regex_match(response, m, ResponsePatterns::tie);
+
+            if (m.empty())
+            {
+                reportError("Unable to interpret the 'tie' response.");
+            }
+            else
+            {
+                unsigned int out = boost::lexical_cast<unsigned int>(m.str(1));
+                unsigned int in = boost::lexical_cast<unsigned int>(m.str(2));
+                current_input_of_output[out] = in;
+                tieChanged(out, in);
+            }
+
+            break;
+        }
+        case RequestType::RequestCurrentConfiguration:
+        {
+            std::smatch m;
+            std::regex_match(response, m, ResponsePatterns::current_configuration);
+            if(m.empty())
+            {
+                reportError("Unable to interpret the 'global preset ties' response.");
+            }
+            else
+            {
+                std::stringstream response_stream(response);
+                for (unsigned int out = 1; out <= 16; ++out) {
+                    unsigned int in;
+                    response_stream >> in;
+
+                    tieChanged(++viewed_current_outputs, static_cast<uint8_t>(in));
+
+                    if (viewed_current_outputs >= number_of_virtual_outputs)
+                    {
+                        std::call_once(connectedCallbackOnceFlag, connectedCallback);
+                        break;
+                    }
+                }
+            }
+
+            break;
+        }
+        case RequestType::ReadVirtualInputName:
+        {
+            input_names[request_in_progress.index - 1] = response;
+            inputNameChanged(request_in_progress.index, response);
+            break;
+        }
+        case RequestType::ReadVirtualOutputName:
+        {
+            output_names[request_in_progress.index - 1] = response;
+            outputNameChanged(request_in_progress.index, response);
+            break;
+        }
+        case RequestType::WriteVirtualInputName:
+        {
           if (response != "NamI")
           {
             reportError((boost::format("Unexpected response '%1%' with request %2%") % response % request_in_progress.request).str());
           }
           request_virtual_input_name(request_in_progress.index);
           break;
-    }
-    case RequestType::WriteVirtualOutputName:
-    {
+        }
+        case RequestType::WriteVirtualOutputName:
+        {
           if (response != "NamO")
           {
             reportError((boost::format("Unexpected response '%1%' with request %2%") % response % request_in_progress.request).str());
           }
           request_virtual_output_name(request_in_progress.index);
           break;
-    }
-    default:
-    {
-        // Why did we get a response but did not expect one?
-        reportError((boost::format("Unexpected response '%1%' with request type %2%") % response % request_in_progress.request).str());
-        break;
-    }
+        }
+        default:
+        {
+            // Why did we get a response but did not expect one?
+            reportError((boost::format("Unexpected response '%1%' with request %2%") % response % request_in_progress.request).str());
+            break;
+        }
+        }
     }
 
     std::lock_guard<std::mutex> lock_guard(request_queue_mutex);
