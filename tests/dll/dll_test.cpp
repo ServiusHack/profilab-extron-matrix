@@ -190,7 +190,7 @@ SCENARIO("Input and output pins", "[dll]") {
 
     WHEN("Calling CNumInputsEx") {
       unsigned char inputs = CNumInputsEx(PUser.get());
-      THEN("9 inputs are returned") { REQUIRE(inputs == 9); }
+      THEN("5 inputs are returned") { REQUIRE(inputs == 5); }
     }
 
     WHEN("Getting first input name") {
@@ -232,51 +232,15 @@ SCENARIO("Input and output pins", "[dll]") {
     WHEN("Getting 5th input name") {
       std::array<unsigned char, 100> name;
       GetInputName(4, name.data());
-      THEN("It is '$I0'") {
+      THEN("It is '$INS'") {
         std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I0");
-      }
-    }
-
-    WHEN("Getting 6th input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(5, name.data());
-      THEN("It is '$I1'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I1");
-      }
-    }
-
-    WHEN("Getting 7th input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(6, name.data());
-      THEN("It is '$I2'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I2");
-      }
-    }
-
-    WHEN("Getting 8th input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(7, name.data());
-      THEN("It is '$I3'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I3");
-      }
-    }
-
-    WHEN("Getting 9th input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(8, name.data());
-      THEN("It is '$I4'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I4");
+        CHECK(str == "$INS");
       }
     }
 
     WHEN("Calling CNumOutputsEx") {
       unsigned char outputs = CNumOutputsEx(PUser.get());
-      THEN("10 outputs are returned") { REQUIRE(outputs == 10); }
+      THEN("6 outputs are returned") { REQUIRE(outputs == 6); }
     }
 
     WHEN("Getting first output name") {
@@ -327,45 +291,9 @@ SCENARIO("Input and output pins", "[dll]") {
     WHEN("Getting 6th output name") {
       std::array<unsigned char, 100> name;
       GetOutputName(5, name.data());
-      THEN("It is '$I0'") {
+      THEN("It is '$INS'") {
         std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I0");
-      }
-    }
-
-    WHEN("Getting 7th output name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(6, name.data());
-      THEN("It is '$I1'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I1");
-      }
-    }
-
-    WHEN("Getting 8th output name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(7, name.data());
-      THEN("It is '$I2'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I2");
-      }
-    }
-
-    WHEN("Getting 9th output name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(8, name.data());
-      THEN("It is '$I3'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I3");
-      }
-    }
-
-    WHEN("Getting 10th output name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(9, name.data());
-      THEN("It is '$I4'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I4");
+        CHECK(str == "$INS");
       }
     }
   }
@@ -382,7 +310,7 @@ SCENARIO("Input and output pins", "[dll]") {
 
     WHEN("Calling CNumInputsEx") {
       unsigned char inputs = CNumInputsEx(PUser.get());
-      THEN("6 inputs are returned") { REQUIRE(inputs == 6); }
+      THEN("5 inputs are returned") { REQUIRE(inputs == 5); }
     }
 
     WHEN("Getting first input name") {
@@ -424,18 +352,138 @@ SCENARIO("Input and output pins", "[dll]") {
     WHEN("Getting 5th input name") {
       std::array<unsigned char, 100> name;
       GetInputName(4, name.data());
-      THEN("It is '$O0'") {
+      THEN("It is '$OUTS'") {
         std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$O0");
+        CHECK(str == "$OUTS");
+      }
+    }
+
+    WHEN("Calling CNumOutputsEx") {
+      unsigned char outputs = CNumOutputsEx(PUser.get());
+      THEN("6 outputs are returned") { REQUIRE(outputs == 6); }
+    }
+
+    WHEN("Getting first output name") {
+      std::array<unsigned char, 100> name;
+      GetOutputName(0, name.data());
+      THEN("It is 'CON'") {
+        std::string str(reinterpret_cast<char*>(&name.front()));
+        CHECK(str == "CON");
+      }
+    }
+
+    WHEN("Getting second output name") {
+      std::array<unsigned char, 100> name;
+      GetOutputName(1, name.data());
+      THEN("It is 'ERR'") {
+        std::string str(reinterpret_cast<char*>(&name.front()));
+        CHECK(str == "ERR");
+      }
+    }
+
+    WHEN("Getting third output name") {
+      std::array<unsigned char, 100> name;
+      GetOutputName(2, name.data());
+      THEN("It is '$ERR'") {
+        std::string str(reinterpret_cast<char*>(&name.front()));
+        CHECK(str == "$ERR");
+      }
+    }
+
+    WHEN("Getting fourth output name") {
+      std::array<unsigned char, 100> name;
+      GetOutputName(3, name.data());
+      THEN("It is 'OUT0'") {
+        std::string str(reinterpret_cast<char*>(&name.front()));
+        CHECK(str == "OUT0");
+      }
+    }
+
+    WHEN("Getting fifth output name") {
+      std::array<unsigned char, 100> name;
+      GetOutputName(4, name.data());
+      THEN("It is 'OUT1'") {
+        std::string str(reinterpret_cast<char*>(&name.front()));
+        CHECK(str == "OUT1");
+      }
+    }
+
+    WHEN("Getting sixth input name") {
+      std::array<unsigned char, 100> name;
+      GetOutputName(5, name.data());
+      THEN("It is '$OUTS'") {
+        std::string str(reinterpret_cast<char*>(&name.front()));
+        CHECK(str == "$OUTS");
+      }
+    }
+  }
+
+  GIVEN("A configuration with 5 inputs and 2 outputs with names") {
+    std::unique_ptr<double> PUser(new double);
+    ALLOW_CALL(configurationMockInstance, Constructor(PUser.get(), _))
+        .LR_SIDE_EFFECT(_2.present = true)
+        .LR_SIDE_EFFECT(_2.comPort = "COM1")
+        .LR_SIDE_EFFECT(_2.inputs = 5)
+        .LR_SIDE_EFFECT(_2.outputs = 2)
+        .LR_SIDE_EFFECT(_2.includeInputNames = true)
+        .LR_SIDE_EFFECT(_2.includeOutputNames = true);
+
+    WHEN("Calling CNumInputsEx") {
+      unsigned char inputs = CNumInputsEx(PUser.get());
+      THEN("6 inputs are returned") { REQUIRE(inputs == 6); }
+    }
+
+    WHEN("Getting first input name") {
+      std::array<unsigned char, 100> name;
+      GetInputName(0, name.data());
+      THEN("It is 'STORE'") {
+        std::string str(reinterpret_cast<char*>(&name.front()));
+        CHECK(str == "STORE");
+      }
+    }
+
+    WHEN("Getting second input name") {
+      std::array<unsigned char, 100> name;
+      GetInputName(1, name.data());
+      THEN("It is 'RECALL'") {
+        std::string str(reinterpret_cast<char*>(&name.front()));
+        CHECK(str == "RECALL");
+      }
+    }
+
+    WHEN("Getting third input name") {
+      std::array<unsigned char, 100> name;
+      GetInputName(2, name.data());
+      THEN("It is 'OUT0'") {
+        std::string str(reinterpret_cast<char*>(&name.front()));
+        CHECK(str == "OUT0");
+      }
+    }
+
+    WHEN("Getting third input name") {
+      std::array<unsigned char, 100> name;
+      GetInputName(3, name.data());
+      THEN("It is 'OUT1'") {
+        std::string str(reinterpret_cast<char*>(&name.front()));
+        CHECK(str == "OUT1");
+      }
+    }
+
+    WHEN("Getting 5th input name") {
+      std::array<unsigned char, 100> name;
+      GetInputName(4, name.data());
+      THEN("It is '$INS'") {
+        std::string str(reinterpret_cast<char*>(&name.front()));
+        CHECK(str == "$INS");
       }
     }
 
     WHEN("Getting 6th input name") {
       std::array<unsigned char, 100> name;
       GetInputName(5, name.data());
-      THEN("It is '$O1'") {
+      THEN("It is '$OUTS'") {
         std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$O1");
+        CHECK(str == "$OUTS");
       }
     }
 
@@ -489,249 +537,21 @@ SCENARIO("Input and output pins", "[dll]") {
       }
     }
 
-    WHEN("Getting sixth input name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(5, name.data());
-      THEN("It is '$O0'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$O0");
-      }
-    }
-
-    WHEN("Getting seventh input name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(6, name.data());
-      THEN("It is '$O1'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$O1");
-      }
-    }
-  }
-
-  GIVEN("A configuration with 5 inputs and 2 outputs with names") {
-    std::unique_ptr<double> PUser(new double);
-    ALLOW_CALL(configurationMockInstance, Constructor(PUser.get(), _))
-        .LR_SIDE_EFFECT(_2.present = true)
-        .LR_SIDE_EFFECT(_2.comPort = "COM1")
-        .LR_SIDE_EFFECT(_2.inputs = 5)
-        .LR_SIDE_EFFECT(_2.outputs = 2)
-        .LR_SIDE_EFFECT(_2.includeInputNames = true)
-        .LR_SIDE_EFFECT(_2.includeOutputNames = true);
-
-    WHEN("Calling CNumInputsEx") {
-      unsigned char inputs = CNumInputsEx(PUser.get());
-      THEN("11 inputs are returned") { REQUIRE(inputs == 11); }
-    }
-
-    WHEN("Getting first input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(0, name.data());
-      THEN("It is 'STORE'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "STORE");
-      }
-    }
-
-    WHEN("Getting second input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(1, name.data());
-      THEN("It is 'RECALL'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "RECALL");
-      }
-    }
-
-    WHEN("Getting third input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(2, name.data());
-      THEN("It is 'OUT0'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "OUT0");
-      }
-    }
-
-    WHEN("Getting third input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(3, name.data());
-      THEN("It is 'OUT1'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "OUT1");
-      }
-    }
-
-    WHEN("Getting 5th input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(4, name.data());
-      THEN("It is '$I0'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I0");
-      }
-    }
-
-    WHEN("Getting 6th input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(5, name.data());
-      THEN("It is '$I1'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I1");
-      }
-    }
-
-    WHEN("Getting 7th input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(6, name.data());
-      THEN("It is '$I2'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I2");
-      }
-    }
-
-    WHEN("Getting 8th input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(7, name.data());
-      THEN("It is '$I3'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I3");
-      }
-    }
-
-    WHEN("Getting 9th input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(8, name.data());
-      THEN("It is '$I4'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I4");
-      }
-    }
-
-    WHEN("Getting 10th input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(9, name.data());
-      THEN("It is '$O0'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$O0");
-      }
-    }
-
-    WHEN("Getting 11th input name") {
-      std::array<unsigned char, 100> name;
-      GetInputName(10, name.data());
-      THEN("It is '$O1'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$O1");
-      }
-    }
-
-    WHEN("Calling CNumOutputsEx") {
-      unsigned char outputs = CNumOutputsEx(PUser.get());
-      THEN("12 outputs are returned") { REQUIRE(outputs == 12); }
-    }
-
-    WHEN("Getting first output name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(0, name.data());
-      THEN("It is 'CON'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "CON");
-      }
-    }
-
-    WHEN("Getting second output name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(1, name.data());
-      THEN("It is 'ERR'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "ERR");
-      }
-    }
-
-    WHEN("Getting third output name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(2, name.data());
-      THEN("It is '$ERR'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$ERR");
-      }
-    }
-
-    WHEN("Getting fourth output name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(3, name.data());
-      THEN("It is 'OUT0'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "OUT0");
-      }
-    }
-
-    WHEN("Getting fifth output name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(4, name.data());
-      THEN("It is 'OUT1'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "OUT1");
-      }
-    }
-
     WHEN("Getting 6th input name") {
       std::array<unsigned char, 100> name;
       GetOutputName(5, name.data());
-      THEN("It is '$I0'") {
+      THEN("It is '$INS'") {
         std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I0");
+        CHECK(str == "$INS");
       }
     }
 
     WHEN("Getting 7th input name") {
       std::array<unsigned char, 100> name;
       GetOutputName(6, name.data());
-      THEN("It is '$I1'") {
+      THEN("It is '$OUTS'") {
         std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I1");
-      }
-    }
-
-    WHEN("Getting 8th input name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(7, name.data());
-      THEN("It is '$I2'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I2");
-      }
-    }
-
-    WHEN("Getting 9th input name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(8, name.data());
-      THEN("It is '$I3'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I3");
-      }
-    }
-
-    WHEN("Getting 10th input name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(9, name.data());
-      THEN("It is '$I4'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$I4");
-      }
-    }
-
-    WHEN("Getting 11th input name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(10, name.data());
-      THEN("It is '$O0'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$O0");
-      }
-    }
-
-    WHEN("Getting 12th input name") {
-      std::array<unsigned char, 100> name;
-      GetOutputName(11, name.data());
-      THEN("It is '$O1'") {
-        std::string str(reinterpret_cast<char*>(&name.front()));
-        CHECK(str == "$O1");
+        CHECK(str == "$OUTS");
       }
     }
   }
@@ -761,8 +581,80 @@ SCENARIO("Simulation", "[dll]") {
         .LR_SIDE_EFFECT(device = _1);
 
     ALLOW_CALL(deviceMockInstance, open("COM1"));
+    ALLOW_CALL(deviceMockInstance, close());
 
     CSimStart(PInput.data(), POutput.data(), PUser.data());
+
+    WHEN("not connected to the device")
+    {
+      WHEN("the first pin is set to 5.0") {
+        PInput[0] = 5.0;
+
+        THEN("nothing happens") {
+          CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                       PStrings.data());
+        }
+      }
+
+      WHEN("the second pin is set to 3.0") {
+        PInput[1] = 3.0;
+
+        THEN("nothing happens") {
+          CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                       PStrings.data());
+        }
+      }
+
+      WHEN("the third pin is set to 2.0") {
+        PInput[2] = 2.0;
+
+        THEN("nothing happens") {
+          CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                       PStrings.data());
+        }
+      }
+
+      WHEN("the fifth pin is set to 'abc'") {
+        memcpy(PStrings[4], "abc", 4);
+
+        THEN("nothing happens") {
+          CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                       PStrings.data());
+        }
+      }
+
+      WHEN("the sixth pin is set to 'xyz'") {
+        memcpy(PStrings[5], "xyz", 4);
+
+        THEN("nothing happens") {
+          CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                       PStrings.data());
+        }
+      }
+
+    }
+
+    WHEN("connected to device") {
+
+    device->connectedCallback();
+
+    REQUIRE_CALL(deviceMockInstance, get_number_of_virtual_outputs())
+        .TIMES(AT_LEAST(1))
+        .RETURN(2);
+    REQUIRE_CALL(deviceMockInstance, get_number_of_virtual_inputs())
+        .TIMES(AT_LEAST(1))
+        .RETURN(5);
+    device->setupCallback();
+
+    ALLOW_CALL(deviceMockInstance, tie(0,1));
+    ALLOW_CALL(deviceMockInstance, tie(0,2));
+
+    CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                 PStrings.data());
+
+    THEN("the first pin is set to 5.0") {
+      REQUIRE(POutput[0] == 5.0);
+    }
 
     WHEN("the first pin is set to 5.0") {
       PInput[0] = 5.0;
@@ -947,50 +839,106 @@ SCENARIO("Simulation", "[dll]") {
       THEN("the first input name is set to 'abc'") {
         REQUIRE_CALL(deviceMockInstance, set_input_name(1, "abc"));
 
-          CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
-                       PStrings.data());
+        CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                     PStrings.data());
+
+        WHEN("the fifth pin is set to 'abc;def;ghi'") {
+          memcpy(PStrings[4], "abc;def;ghi", 12);
+
+          THEN("the second and third input name is set to 'def' and 'ghi'") {
+            REQUIRE_CALL(deviceMockInstance, set_input_name(2, "def"));
+            REQUIRE_CALL(deviceMockInstance, set_input_name(3, "ghi"));
+
+            CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                         PStrings.data());
+
+            WHEN("the fifth pin is set to 'abc;def2;ghi'") {
+              memcpy(PStrings[4], "abc;def2;ghi", 13);
+
+              THEN("the second input name is set to 'def2'") {
+                REQUIRE_CALL(deviceMockInstance, set_input_name(2, "def2"));
+
+                CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                             PStrings.data());
+              }
+            }
+          }
+
+        }
       }
     }
 
-    WHEN("the nineth pin is set to 'xyz'") {
-      memcpy(PStrings[8], "xyz", 4);
+    WHEN("the sixth pin is set to 'abc'") {
+      memcpy(PStrings[5], "abc", 4);
 
-      THEN("the 5th input name is set to 'xyz'") {
-        REQUIRE_CALL(deviceMockInstance, set_input_name(5, "xyz"));
+      THEN("the first output name is set to 'abc'") {
+        REQUIRE_CALL(deviceMockInstance, set_output_name(1, "abc"));
 
-          CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
-                       PStrings.data());
+        CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                     PStrings.data());
+
+        WHEN("the sixth pin is set to 'abc;def'") {
+          memcpy(PStrings[5], "abc;def", 8);
+
+          THEN("the second output name is set to 'def'") {
+            REQUIRE_CALL(deviceMockInstance, set_output_name(2, "def"));
+
+            CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                         PStrings.data());
+
+            WHEN("the sixth pin is set to 'abc2;def'") {
+              memcpy(PStrings[5], "abc2;def", 9);
+
+              THEN("the first output name is set to 'abc2'") {
+                REQUIRE_CALL(deviceMockInstance, set_output_name(1, "abc2"));
+
+                CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                             PStrings.data());
+              }
+            }
+          }
+
+        }
       }
     }
 
-    WHEN("the tenth pin is set to 'def'") {
-      memcpy(PStrings[9], "def", 4);
+    WHEN("the first input name changed to 'abc'") {
 
-      THEN("the first output name is set to 'def'") {
-        REQUIRE_CALL(deviceMockInstance, set_output_name(1, "def"));
+      device->inputNameChanged(1, "abc");
 
-          CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
-                       PStrings.data());
+      THEN("the sixth pin is set to 'abc;;;;'") {
+        CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                     PStrings.data());
+
+          REQUIRE(std::string(PStrings[5]) ==
+                  "abc;;;;");
       }
     }
 
-    WHEN("the eleventh pin is set to '123'") {
-      memcpy(PStrings[10], "123", 4);
+      WHEN("the second input name changed to 'def'") {
 
-      THEN("the second output name is set to '123'") {
-        REQUIRE_CALL(deviceMockInstance, set_output_name(2, "123"));
+        device->inputNameChanged(2, "def");
 
+        THEN("the sixth pin is set to 'abc;def;;;'") {
           CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
                        PStrings.data());
+
+          REQUIRE(std::string(PStrings[5]) == ";def;;;");
+        }
+      }
+
+    WHEN("the second output name changed to 'xyz'") {
+
+      device->outputNameChanged(2, "xyz");
+
+      THEN("the seventh pin is set to 'xyz'") {
+        CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
+                     PStrings.data());
+
+          REQUIRE(std::string(PStrings[6]) ==
+                  ";xyz");
       }
     }
-
-    WHEN("connected to device") {
-      device->connectedCallback();
-      CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
-                   PStrings.data());
-
-      THEN("the first pin is set to 5.0") { REQUIRE(POutput[0] == 5.0); }
 
       WHEN("device has different number of outputs") {
         REQUIRE_CALL(deviceMockInstance, get_number_of_virtual_outputs()).TIMES(AT_LEAST(1)).RETURN(1);
@@ -1039,7 +987,6 @@ SCENARIO("Simulation", "[dll]") {
           REQUIRE(!std::string(PStrings[2]).empty());
         }
       }
-    }
 
     WHEN("a device error was encountered") {
       const std::string errorMessage("test error message");
@@ -1062,8 +1009,7 @@ SCENARIO("Simulation", "[dll]") {
       THEN("the 5th pin is set to 4.0") { REQUIRE(POutput[4] == 4.0); }
     }
 
-    ALLOW_CALL(deviceMockInstance, close());
-
     CSimStop(PInput.data(), POutput.data(), PUser.data());
   }
+}
 }

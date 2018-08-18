@@ -44,9 +44,9 @@ DLLEXPORT unsigned char __stdcall CNumInputsEx(double* PUser) {
   if (configuration.present) {
     unsigned int numberOfInputs = configuration.outputs + 2;
     if (configuration.includeInputNames)
-      numberOfInputs += configuration.inputs;
+      numberOfInputs += 1;
     if (configuration.includeOutputNames)
-      numberOfInputs += configuration.outputs;
+      numberOfInputs += 1;
     assert(numberOfInputs <= std::numeric_limits<unsigned char>::max());
     return static_cast<unsigned char>(numberOfInputs);
   } else {
@@ -66,9 +66,9 @@ DLLEXPORT unsigned char __stdcall CNumOutputsEx(double* PUser) {
   if (configuration.present) {
     unsigned int numberOfOutputs = configuration.outputs + 3;
     if (configuration.includeInputNames)
-      numberOfOutputs += configuration.inputs;
+      numberOfOutputs += 1;
     if (configuration.includeOutputNames)
-      numberOfOutputs += configuration.outputs;
+      numberOfOutputs += 1;
     assert(numberOfOutputs <= std::numeric_limits<unsigned char>::max());
     return static_cast<unsigned char>(numberOfOutputs);
   } else {
@@ -86,6 +86,8 @@ DLLEXPORT void __stdcall GetInputName(unsigned char Channel,
                                       unsigned char* Name) {
   static const std::string storeInputName = "STORE";
   static const std::string recallInputName = "RECALL";
+  static const std::string inputNames = "$INS";
+  static const std::string outputNames = "$OUTS";
 
   switch (Channel) {
     case 0:
@@ -106,17 +108,21 @@ DLLEXPORT void __stdcall GetInputName(unsigned char Channel,
       Channel -= configuration.outputs;
       
       if (configuration.includeInputNames) {
-        if (Channel < configuration.inputs) {
-          sprintf(reinterpret_cast<char*>(Name), "$I%d", Channel);
+        if (Channel == 0)
+        {
+          memcpy(Name, inputNames.c_str(), inputNames.size() + 1);
           return;
+        } else {
+          --Channel;
         }
-
-        Channel -= configuration.inputs;
       }
       
-      if (configuration.includeOutputNames && Channel < configuration.outputs) {
-        sprintf(reinterpret_cast<char*>(Name), "$O%d", Channel);
-        return;
+      if (configuration.includeOutputNames) {
+        if (Channel == 0)
+        {
+          memcpy(Name, outputNames.c_str(), outputNames.size() + 1);
+          return;
+        }
       }
 
       Name[0] = '\0';
@@ -131,6 +137,8 @@ DLLEXPORT void __stdcall GetOutputName(unsigned char Channel,
   static const std::string connectedOutputName = "CON";
   static const std::string errorOutputName = "ERR";
   static const std::string errorStringOutputName = "$ERR";
+  static const std::string inputNames = "$INS";
+  static const std::string outputNames = "$OUTS";
 
   switch (Channel) {
     case 0:
@@ -155,17 +163,21 @@ DLLEXPORT void __stdcall GetOutputName(unsigned char Channel,
       Channel -= configuration.outputs;
       
       if (configuration.includeInputNames) {
-        if (Channel < configuration.inputs) {
-          sprintf(reinterpret_cast<char*>(Name), "$I%d", Channel);
+        if (Channel == 0)
+        {
+          memcpy(Name, inputNames.c_str(), inputNames.size() + 1);
           return;
+        } else {
+          --Channel;
         }
-
-        Channel -= configuration.inputs;
       }
       
-      if (configuration.includeOutputNames && Channel < configuration.outputs) {
-          sprintf(reinterpret_cast<char*>(Name), "$O%d", Channel);
+      if (configuration.includeOutputNames) {
+        if (Channel == 0)
+        {
+          memcpy(Name, outputNames.c_str(), outputNames.size() + 1);
           return;
+        }
       }
   
       Name[0] = '\0';
