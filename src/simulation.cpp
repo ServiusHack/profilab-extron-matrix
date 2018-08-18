@@ -37,7 +37,6 @@ Simulation::Simulation(const Configuration& configuration)
 
   device = std::make_unique<Device>(io_service);
   try {
-    device->open(configuration.comPort);
     device->connectedCallback = [this]() {
       std::unique_lock<std::mutex>(mutex);
       nextPOutput[0] = 5.0;
@@ -83,6 +82,7 @@ Simulation::Simulation(const Configuration& configuration)
       nextPOutput[1] = 5.0;
       errorMessage = message;
     };
+    device->open(configuration.comPort);
   } catch (const boost::system::system_error& e) {
     nextPOutput[1] = 5.0;
     errorMessage = e.what();
