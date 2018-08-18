@@ -823,8 +823,8 @@ SCENARIO("Simulation", "[dll]") {
         WHEN("the third pin is set to 0.0") {
           PInput[2] = 0;
 
-          THEN("nothing happens") {
-            FORBID_CALL(deviceMockInstance, tie(_, _));
+          THEN("the output 1 is cleared") {
+            REQUIRE_CALL(deviceMockInstance, tie(0, 1));
 
             CCalculateEx(PInput.data(), POutput.data(), PUser.data(),
                          PStrings.data());

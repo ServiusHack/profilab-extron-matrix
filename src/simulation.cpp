@@ -134,8 +134,7 @@ void Simulation::Calculate(double* PInput, double* POutput, char** PStrings)
       const unsigned int normalizedValue = normalizeToUnsignedInt(PInput[offset + i]);
       if (previousNormalizedPInput[offset + i] != normalizedValue) {
         previousNormalizedPInput[offset + i] = normalizedValue;
-        if (normalizedValue != 0)
-          device->tie(normalizedValue, i + 1);  // i is 0-based but device parameters are 1-based
+        device->tie(normalizedValue, i + 1);  // i is 0-based but device parameters are 1-based
       }
     }
 
