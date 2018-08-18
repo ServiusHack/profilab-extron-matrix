@@ -14,7 +14,8 @@ Simulation::Simulation(const Configuration& configuration)
   : configuration(configuration) {
 
   previousNormalizedPInput.clear();
-  previousNormalizedPInput.resize(2 + configuration.outputs, 0);
+  previousNormalizedPInput.resize(2 + configuration.outputs,
+                                  std::numeric_limits<unsigned int>::max());
 
   previousInputNames.clear();
   previousInputNames.resize(configuration.inputs);
