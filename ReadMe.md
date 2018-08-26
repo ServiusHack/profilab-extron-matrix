@@ -1,6 +1,6 @@
 # Extron-Matrix ProfiLab DLL
 
-A DLL for ProfiLab to interact with a Matrix crosspoint from Extron.
+A DLL for [ProfiLab](http://www.abacom-online.de/html/profilab.html) to interact with Extron Matrix switchers.
 
 The [documentation](docs/Documentation.md) explains what the DLL does in more detail.
 
