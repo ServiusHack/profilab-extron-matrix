@@ -7,13 +7,22 @@ set(CMAKE_USER_MAKE_RULES_OVERRIDE_CXX
 
 project(Extron-Matrix)
 
-add_library(${PROJECT_NAME} SHARED 
+set(SOURCES
 	src/configurationdialog.cpp
+	src/configurationdialog.h
 	src/configuration.cpp
+	src/configuration.h
 	src/dll.cpp
 	src/device.cpp
+	src/device.h
 	src/listserialports.cpp
+	src/listserialports.h
 	src/simulation.cpp
+	src/simulation.h
+)
+
+add_library(${PROJECT_NAME} SHARED
+	${SOURCES}
 	res/Extron-Matrix.rc
 	
 	# ProfiLab expects functions with the stdcall calling convention but the names must be unmangled.

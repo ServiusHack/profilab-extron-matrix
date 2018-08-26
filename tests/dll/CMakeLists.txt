@@ -1,7 +1,7 @@
 add_executable(${PROJECT_NAME}_DLLTests
  ${CMAKE_SOURCE_DIR}/src/dll.cpp # SUT
  ${CMAKE_SOURCE_DIR}/src/simulation.cpp
- ${CMAKE_SOURCE_DIR}/src/simulation.cpp
+ ${CMAKE_SOURCE_DIR}/src/simulation.h
  dll_test.cpp # Tests
  ${CMAKE_SOURCE_DIR}/tests/mocks/configuration_mock.cpp
  ${CMAKE_SOURCE_DIR}/tests/mocks/configurationdialog_mock.cpp

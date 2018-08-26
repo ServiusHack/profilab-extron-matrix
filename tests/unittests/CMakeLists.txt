@@ -1,7 +1,9 @@
 add_executable(${PROJECT_NAME}_Unittests
 	${CMAKE_SOURCE_DIR}/src/configuration.cpp
+	${CMAKE_SOURCE_DIR}/src/configuration.h
 	configuration_test.cpp
 	${CMAKE_SOURCE_DIR}/src/listserialports.cpp
+	${CMAKE_SOURCE_DIR}/src/listserialports.h
 	listserialports_test.cpp
 )
 
