@@ -26,3 +26,13 @@ test_script:
 artifacts:
   - path: Extron-Matrix-dll.zip
   - path: Extron-Matrix-pdb.zip
+
+skip_tags: true # We crreate tags as part of the deploy process
+
+deploy:
+  description: ''
+  provider: GitHub
+  auth_token:
+    secure: S9CG53vs2k5o/zvoY8Us4peL2S+kp9a8IDLmRaK6yxRx7o+fuPUctlU4qBqSsI6X
+  on:
+    branch: master
