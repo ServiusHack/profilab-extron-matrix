@@ -13,6 +13,4 @@ The [documentation](docs/Documentation.md) explains what the DLL does in more de
 
 ### Tests
 
-To successfully run the tests the following requirements must be satisfied:
-
-* At least one serial port exists on the machine.
+Some test cases require at least one serial port to be present on the machine. These are tagged with `[hardware-required]`.

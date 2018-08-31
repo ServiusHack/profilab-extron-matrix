@@ -2,7 +2,7 @@
 
 #include "listserialports.h"
 
-SCENARIO("listing serial ports") {
+SCENARIO("listing serial ports", "[hardware-required]") {
   WHEN("getting list of serial ports") {
     std::vector<std::string> lists = listSerialPorts();
 

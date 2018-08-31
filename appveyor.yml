@@ -16,7 +16,7 @@ build:
   project: build\Extron-Matrix.sln
 
 test_script:
-  - tests\unittests\RelWithDebInfo\Extron-Matrix_Unittests.exe
+  - tests\unittests\RelWithDebInfo\Extron-Matrix_Unittests.exe ~[hardware-required]
   - tests\dll\RelWithDebInfo\Extron-Matrix_DLLTests.exe
 
 artifacts:
