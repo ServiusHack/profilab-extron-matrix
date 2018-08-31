@@ -15,10 +15,14 @@ configuration: RelWithDebInfo
 build:
   project: build\Extron-Matrix.sln
 
+after_build:
+   - 7z a %APPVEYOR_BUILD_FOLDER%\Extron-Matrix-dll.zip %APPVEYOR_BUILD_FOLDER%\build\RelWithDebInfo\Extron-Matrix.dll
+   - 7z a %APPVEYOR_BUILD_FOLDER%\Extron-Matrix-pdb.zip %APPVEYOR_BUILD_FOLDER%\build\RelWithDebInfo\Extron-Matrix.pdb
+
 test_script:
   - tests\unittests\RelWithDebInfo\Extron-Matrix_Unittests.exe ~[hardware-required]
   - tests\dll\RelWithDebInfo\Extron-Matrix_DLLTests.exe
 
 artifacts:
-  - path: build\RelWithDebInfo\Extron-Matrix.dll
-  - path: build\RelWithDebInfo\Extron-Matrix.pdb
+  - path: Extron-Matrix-dll.zip
+  - path: Extron-Matrix-pdb.zip
