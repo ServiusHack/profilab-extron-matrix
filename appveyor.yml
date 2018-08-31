@@ -6,6 +6,7 @@ install:
   - vcpkg install boost-algorithm:x86-windows-static boost-format:x86-windows-static boost-asio:x86-windows-static boost-asio:x86-windows-static catch2:x86-windows-static
 
 before_build:
+  - ps: (Get-Content res\Extron-Matrix.rc).replace('0,0,0,0', $env:APPVEYOR_BUILD_VERSION.replace('.',',')).replace('0.0.0.0', $env:APPVEYOR_BUILD_VERSION) | Set-Content res\Extron-Matrix.rc
   - mkdir build
   - cd build
   - cmake .. -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x86-windows-static
